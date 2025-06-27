@@ -1,1 +1,315 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewsApp România</title>
+    
+    <!-- PWA -->
+    <meta name="theme-color" content="#dc2626">
+    <link rel="manifest" href="manifest.json">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1f2937, #374151);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc2626;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .search-bar {
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 500px;
+            padding: 1rem;
+            border-radius: 25px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1rem;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc2626;
+        }
+
+        .stat-label {
+            color: rgba(255,255,255,0.7);
+            margin-top: 0.5rem;
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .news-card {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+
+        .news-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .news-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+
+        .news-content {
+            padding: 1.5rem;
+        }
+
+        .news-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .news-description {
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .news-source {
+            background: rgba(220,38,38,0.2);
+            color: #dc2626;
+            padding: 0.25rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: inline-block;
+        }
+
+        .install-notice {
+            background: rgba(59,130,246,0.2);
+            border: 1px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .refresh-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 1rem auto;
+            display: block;
+        }
+
+        .refresh-btn:hover {
+            background: #991b1b;
+        }
+
+        @media (max-width: 768px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .news-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">📰 NewsApp România</div>
+    </header>
+
+    <main class="container">
+        <div class="install-notice">
+            💡 <strong>Aplicația funcționează!</strong> Pentru știri reale, configurează API key-ul de la <a href="https://newsapi.org" target="_blank" style="color: #60a5fa;">NewsAPI.org</a>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" class="search-input" placeholder="🔍 Caută știri..." id="searchInput">
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalNews">3</div>
+                <div class="stat-label">Știri demo</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="filteredNews">3</div>
+                <div class="stat-label">Afișate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="bookmarkedNews">0</div>
+                <div class="stat-label">Salvate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="lastUpdate">16:30</div>
+                <div class="stat-label">Ultima actualizare</div>
+            </div>
+        </div>
+
+        <button class="refresh-btn" onclick="refreshNews()">🔄 Actualizează știrile</button>
+
+        <div class="news-grid" id="newsGrid">
+            <article class="news-card">
+                <div class="news-image">📰</div>
+                <div class="news-content">
+                    <h3 class="news-title">NewsApp România - Aplicația funcționează!</h3>
+                    <p class="news-description">Felicitări! Aplicația ta de știri este live pe internet și funcționează perfect. Acesta este un articol demo pentru a testa funcționalitatea.</p>
+                    <span class="news-source">NewsApp Demo</span>
+                </div>
+            </article>
+
+            <article class="news-card">
+                <div class="news-image">🚀</div>
+                <div class="news-content">
+                    <h3 class="news-title">Deploy pe Netlify reușit!</h3>
+                    <p class="news-description">Aplicația ta este acum disponibilă pe internet prin Netlify și poate fi accesată de oricine. Poți să o instalezi și pe telefon ca aplicație nativă!</p>
+                    <span class="news-source">Netlify</span>
+                </div>
+            </article>
+
+            <article class="news-card">
+                <div class="news-image">🔑</div>
+                <div class="news-content">
+                    <h3 class="news-title">Configurează API key pentru știri reale</h3>
+                    <p class="news-description">Pentru a afișa știri reale din România, obține un API key gratuit de la NewsAPI.org și adaugă-l în codul sursă. Procesul durează doar 2 minute!</p>
+                    <span class="news-source">Setup Guide</span>
+                </div>
+            </article>
+        </div>
+    </main>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        }
+
+        // Simple functionality
+        function refreshNews() {
+            const button = document.querySelector('.refresh-btn');
+            const originalText = button.textContent;
+            
+            button.textContent = '🔄 Se actualizează...';
+            button.style.background = '#6b7280';
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.background = '#dc2626';
+                
+                // Update timestamp
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = 
+                    now.getHours().toString().padStart(2, '0') + ':' + 
+                    now.getMinutes().toString().padStart(2, '0');
+                    
+                alert('✅ Știrile au fost actualizate!\n\nPentru știri reale, configurează API key-ul de la NewsAPI.org');
+            }, 2000);
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const newsCards = document.querySelectorAll('.news-card');
+            let visibleCount = 0;
+            
+            newsCards.forEach(card => {
+                const title = card.querySelector('.news-title').textContent.toLowerCase();
+                const description = card.querySelector('.news-description').textContent.toLowerCase();
+                
+                if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('filteredNews').textContent = visibleCount;
+        });
+
+        // PWA Install prompt
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            setTimeout(() => {
+                if (confirm('📱 Vrei să instalezi NewsApp ca aplicație pe telefon/desktop?')) {
+                    deferredPrompt.prompt();
+                }
+            }, 3000);
+        });
+
+        // Initialize
+        console.log('✅ NewsApp România - Aplicația funcționează!');
+        console.log('🔑 Pentru știri reale, configurează API key-ul de la newsapi.org');
+    </script>
+</body>
+</html>
