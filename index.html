@@ -116,6 +116,23 @@
             padding: 2rem 1rem;
         }
 
+        .status-notice {
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .status-notice.success {
+            background: rgba(34,197,94,0.2);
+            border: 1px solid #22c55e;
+        }
+
+        .status-notice.warning {
+            background: rgba(245,158,11,0.2);
+            border: 1px solid #f59e0b;
+        }
+
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -301,66 +318,6 @@
             margin: 0 auto 1rem;
         }
 
-        .error {
-            background: rgba(239,68,68,0.2);
-            border: 1px solid #ef4444;
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            margin: 2rem 0;
-        }
-
-        .success-notice {
-            background: rgba(34,197,94,0.2);
-            border: 1px solid #22c55e;
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-
-        .install-prompt {
-            position: fixed;
-            bottom: 1rem;
-            left: 1rem;
-            right: 1rem;
-            background: #dc2626;
-            color: white;
-            padding: 1rem;
-            border-radius: 12px;
-            display: none;
-            align-items: center;
-            gap: 1rem;
-            z-index: 1000;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .install-prompt.show {
-            display: flex;
-        }
-
-        .install-content {
-            flex: 1;
-        }
-
-        .install-btn, .dismiss-btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        .install-btn {
-            background: white;
-            color: #dc2626;
-        }
-
-        .dismiss-btn {
-            background: rgba(255,255,255,0.2);
-            color: white;
-        }
-
         @media (max-width: 768px) {
             .header-content {
                 flex-direction: column;
@@ -398,10 +355,8 @@
 
     <!-- Main Content -->
     <main class="container">
-        <!-- Success Notice -->
-        <div class="success-notice" id="successNotice">
-            ✅ <strong>API configurat!</strong> Aplicația afișează acum știri reale din România prin NewsAPI.org
-        </div>
+        <!-- Status Notice -->
+        <div class="status-notice" id="statusNotice"></div>
 
         <!-- Stats -->
         <div class="stats">
@@ -429,38 +384,22 @@
         <!-- Loading State -->
         <div class="loading" id="loadingState" style="display: none;">
             <div class="spinner"></div>
-            <h3>Se încarcă știrile reale...</h3>
-            <p>Obținem cele mai recente știri din România</p>
-        </div>
-
-        <!-- Error State -->
-        <div class="error" id="errorState" style="display: none;">
-            <h3>⚠️ Eroare la încărcarea știrilor</h3>
-            <p>Verifică conexiunea la internet și încearcă din nou.</p>
-            <button onclick="loadNews()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 8px;">Încearcă din nou</button>
+            <h3>Se încarcă știrile...</h3>
+            <p>Încearcă să obțină știri reale din România</p>
         </div>
 
         <!-- News Grid -->
         <div class="news-grid" id="newsGrid"></div>
     </main>
 
-    <!-- Install Prompt -->
-    <div class="install-prompt" id="installPrompt">
-        <div class="install-content">
-            <strong>📱 Instalează NewsApp</strong><br>
-            Accesează rapid știrile reale ca o aplicație nativă!
-        </div>
-        <button class="install-btn" id="installBtn">Instalează</button>
-        <button class="dismiss-btn" id="dismissBtn">✕</button>
-    </div>
-
     <script>
-        // Configuration - API KEY CONFIGURAT!
+        // Configuration
         const CONFIG = {
-            API_KEY: '0f4a7abc99584120be0548b803f793de', // ✅ API KEY REAL CONFIGURAT!
+            API_KEY: '0f4a7abc99584120be0548b803f793de',
             BASE_URL: 'https://newsapi.org/v2/top-headlines',
+            FALLBACK_URL: 'https://api.allorigins.win/get?url=',
             COUNTRY: 'ro',
-            PAGE_SIZE: 50
+            PAGE_SIZE: 30
         };
 
         // App State
@@ -471,7 +410,8 @@
             searchTerm: '',
             bookmarks: JSON.parse(localStorage.getItem('newsapp-bookmarks') || '[]'),
             lastUpdate: null,
-            isLoading: false
+            isLoading: false,
+            usingFallback: false
         };
 
         // Categories
@@ -485,7 +425,79 @@
             { id: 'entertainment', name: 'Entertainment', icon: '🎬' }
         ];
 
-        // Load real news from API
+        // Fallback demo news that look realistic
+        const fallbackNews = [
+            {
+                id: 'demo-1',
+                title: "Temperaturi record în România: ANM anunță cod roșu de caniculă",
+                description: "Administrația Națională de Meteorologie a emis avertizări de cod roșu pentru mai multe județe din țară, unde temperaturile vor depăși 40°C.",
+                url: "https://anm.ro",
+                urlToImage: null,
+                publishedAt: new Date(Date.now() - 1800000).toISOString(), // 30 min ago
+                source: { name: "ANM" },
+                category: "general"
+            },
+            {
+                id: 'demo-2',
+                title: "Noi investiții în infrastructură: Autostrăzi în construcție",
+                description: "Guvernul anunță noi contracte pentru construcția de autostrăzi, cu o investiție totală de 2 miliarde de euro până în 2026.",
+                url: "https://gov.ro",
+                urlToImage: null,
+                publishedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+                source: { name: "Guvernul României" },
+                category: "business"
+            },
+            {
+                id: 'demo-3',
+                title: "Performanțe remarcabile ale sportivilor români la competițiile internaționale",
+                description: "Delegația României obține medalii importante la campionatele europene, demonstrând progresul sistemului sportiv național.",
+                url: "https://cosr.ro",
+                urlToImage: null,
+                publishedAt: new Date(Date.now() - 5400000).toISOString(), // 1.5 hours ago
+                source: { name: "Comitetul Olimpic" },
+                category: "sports"
+            },
+            {
+                id: 'demo-4',
+                title: "Digitalizarea în educație: Noi platforme pentru elevi",
+                description: "Ministerul Educației lansează noi instrumente digitale pentru îmbunătățirea procesului educațional în școlile din România.",
+                url: "https://edu.ro",
+                urlToImage: null,
+                publishedAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+                source: { name: "Ministerul Educației" },
+                category: "technology"
+            },
+            {
+                id: 'demo-5',
+                title: "Cercetări medicale importante la institutele româneşti",
+                description: "Oamenii de știință români fac progrese semnificative în dezvoltarea unor noi tratamente pentru bolile cronice.",
+                url: "https://acad.ro",
+                urlToImage: null,
+                publishedAt: new Date(Date.now() - 9000000).toISOString(), // 2.5 hours ago
+                source: { name: "Academia Română" },
+                category: "science"
+            },
+            {
+                id: 'demo-6',
+                title: "Festivaluri de vară: Evenimente culturale în toată țara",
+                description: "România găzduiește numeroase festivaluri și evenimente culturale în această vară, atrăgând turiști din întreaga regiune.",
+                url: "#",
+                urlToImage: null,
+                publishedAt: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
+                source: { name: "Ministerul Culturii" },
+                category: "entertainment"
+            }
+        ];
+
+        // Show status notice
+        function showStatus(message, type = 'success') {
+            const notice = document.getElementById('statusNotice');
+            notice.textContent = message;
+            notice.className = `status-notice ${type}`;
+            notice.style.display = 'block';
+        }
+
+        // Try to load real news, fallback to demo
         async function loadNews(category = 'general') {
             if (state.isLoading) return;
 
@@ -493,58 +505,52 @@
             showLoading(true);
 
             try {
-                // Construct API URL for Romanian news
+                // Try real API first
                 const url = `${CONFIG.BASE_URL}?country=${CONFIG.COUNTRY}&category=${category}&pageSize=${CONFIG.PAGE_SIZE}&apiKey=${CONFIG.API_KEY}`;
                 
-                console.log('Loading news from:', url);
+                console.log('Trying real API:', url);
                 
                 const response = await fetch(url);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.status === 'ok' && data.articles) {
-                    // Process real articles
-                    state.newsData = data.articles
-                        .filter(article => article.title && article.title !== '[Removed]')
-                        .map((article, index) => ({
-                            id: `article-${index}-${Date.now()}`,
-                            title: article.title,
-                            description: article.description || 'Fără descriere disponibilă',
-                            url: article.url,
-                            urlToImage: article.urlToImage,
-                            publishedAt: article.publishedAt,
-                            source: article.source,
-                            category: category
-                        }));
+                if (response.ok) {
+                    const data = await response.json();
                     
-                    state.lastUpdate = new Date();
-                    showError(false);
-                    console.log('✅ Loaded', state.newsData.length, 'real news articles');
+                    if (data.status === 'ok' && data.articles && data.articles.length > 0) {
+                        // Success with real API
+                        state.newsData = data.articles
+                            .filter(article => article.title && article.title !== '[Removed]')
+                            .map((article, index) => ({
+                                id: `real-${index}-${Date.now()}`,
+                                title: article.title,
+                                description: article.description || 'Fără descriere disponibilă',
+                                url: article.url,
+                                urlToImage: article.urlToImage,
+                                publishedAt: article.publishedAt,
+                                source: article.source,
+                                category: category
+                            }));
+                        
+                        state.usingFallback = false;
+                        showStatus('✅ Știri reale încărcate cu succes din NewsAPI!', 'success');
+                        console.log('✅ Real news loaded:', state.newsData.length, 'articles');
+                    } else {
+                        throw new Error('No articles in API response');
+                    }
                 } else {
-                    throw new Error(data.message || 'API response error');
+                    throw new Error(`API returned ${response.status}`);
                 }
             } catch (error) {
-                console.error('Error loading real news:', error);
-                showError(true);
+                console.log('❌ Real API failed:', error.message);
+                console.log('🔄 Using demo news...');
                 
-                // Fallback message for API errors
-                state.newsData = [
-                    {
-                        id: 'error-1',
-                        title: 'Eroare la încărcarea știrilor reale',
-                        description: 'Nu s-au putut încărca știrile de la NewsAPI. Verifică conexiunea la internet sau încearcă din nou mai târziu.',
-                        url: 'https://newsapi.org',
-                        urlToImage: null,
-                        publishedAt: new Date().toISOString(),
-                        source: { name: 'NewsApp Error' },
-                        category: 'general'
-                    }
-                ];
+                // Use demo/fallback news
+                state.newsData = fallbackNews.filter(article => 
+                    category === 'general' || article.category === category
+                );
+                state.usingFallback = true;
+                showStatus('⚠️ Afișez știri demo - API-ul nu este disponibil momentan', 'warning');
             } finally {
+                state.lastUpdate = new Date();
                 state.isLoading = false;
                 showLoading(false);
                 filterNews();
@@ -553,7 +559,7 @@
             }
         }
 
-        // Filter news based on category and search
+        // Filter news based on search
         function filterNews() {
             state.filteredData = state.newsData.filter(article => {
                 const matchesSearch = !state.searchTerm || 
@@ -564,7 +570,7 @@
             });
         }
 
-        // Render news grid with real articles
+        // Render news grid
         function renderNews() {
             const newsGrid = document.getElementById('newsGrid');
             
@@ -602,7 +608,7 @@
                                 ${state.bookmarks.includes(article.id) ? '⭐' : '☆'}
                             </button>
                             <a href="${article.url}" target="_blank" class="read-more" onclick="event.stopPropagation();">
-                                Citește →
+                                ${state.usingFallback ? 'Demo →' : 'Citește →'}
                             </a>
                         </div>
                     </div>
@@ -649,10 +655,6 @@
             document.getElementById('newsGrid').style.display = show ? 'none' : 'grid';
         }
 
-        function showError(show) {
-            document.getElementById('errorState').style.display = show ? 'block' : 'none';
-        }
-
         function setCategory(categoryId) {
             state.activeCategory = categoryId;
             renderCategories();
@@ -672,8 +674,10 @@
 
         function openArticle(articleId) {
             const article = state.newsData.find(a => a.id === articleId);
-            if (article) {
+            if (article && !state.usingFallback) {
                 window.open(article.url, '_blank');
+            } else if (state.usingFallback) {
+                alert('📰 Acesta este un articol demo.\n\nPentru știri reale, verifică API key-ul de la NewsAPI.org');
             }
         }
 
@@ -688,37 +692,15 @@
         document.getElementById('refreshBtn').addEventListener('click', () => {
             const btn = document.getElementById('refreshBtn');
             btn.classList.add('loading');
-            loadNews(state.activeCategory).then(() => {
+            loadNews(state.activeCategory).finally(() => {
                 btn.classList.remove('loading');
             });
         });
 
-        // PWA Install
-        let deferredPrompt;
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            document.getElementById('installPrompt').classList.add('show');
-        });
-
-        document.getElementById('installBtn').addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                deferredPrompt = null;
-                document.getElementById('installPrompt').classList.remove('show');
-            }
-        });
-
-        document.getElementById('dismissBtn').addEventListener('click', () => {
-            document.getElementById('installPrompt').classList.remove('show');
-        });
-
-        // Initialize app with real news
+        // Initialize app
         function init() {
-            console.log('🚀 NewsApp România - Loading real news...');
-            console.log('✅ API Key configured:', CONFIG.API_KEY.substring(0, 8) + '...');
+            console.log('🚀 NewsApp România - Starting...');
+            console.log('🔑 API Key:', CONFIG.API_KEY ? CONFIG.API_KEY.substring(0, 8) + '...' : 'Not configured');
             
             renderCategories();
             loadNews('general');
@@ -727,18 +709,9 @@
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('sw.js').catch(console.error);
             }
-            
-            // Hide success notice after 10 seconds
-            setTimeout(() => {
-                const notice = document.getElementById('successNotice');
-                if (notice) {
-                    notice.style.opacity = '0';
-                    setTimeout(() => notice.style.display = 'none', 500);
-                }
-            }, 10000);
         }
 
-        // Start app with real news
+        // Start app
         init();
     </script>
 </body>
