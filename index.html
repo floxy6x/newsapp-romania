@@ -235,15 +235,22 @@
             border-color: var(--primary-dark);
         }
         
-        /* News Status Bar */
-        .news-status {
-            background: #e8f5e8;
-            border-left: 4px solid #4caf50;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 14px;
+        .news-status.warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        
+        .news-status.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .news-status.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
         }
         
         .status-info {
@@ -625,27 +632,103 @@
                 this.lastUpdate = null;
                 this.autoRefreshInterval = null;
                 
-                // Multiple RSS sources for comprehensive coverage
+                // Multiple working RSS sources with CORS-friendly proxies
                 this.rssSources = {
                     general: [
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.digi24.ro/rss'),
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.hotnews.ro/rss'),
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.libertatea.ro/rss'),
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.g4media.ro/feed')
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.digi24.ro/rss'),
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.hotnews.ro/rss'),
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.libertatea.ro/rss'),
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.g4media.ro/feed')
                     ],
                     business: [
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.zf.ro/rss'),
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.wall-street.ro/rss/all.xml')
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.zf.ro/rss'),
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.wall-street.ro/rss/all.xml')
                     ],
                     technology: [
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.zf.ro/rss/sectiune/it-c-telecom-15'),
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://start-up.ro/feed/')
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.zf.ro/rss/sectiune/it-c-telecom-15'),
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://start-up.ro/feed/')
                     ],
                     sports: [
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.prosport.ro/rss/'),
-                        'https://rss-proxy-api.vercel.app/api/rss?url=' + encodeURIComponent('https://www.gsp.ro/rss')
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.prosport.ro/rss/'),
+                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.gsp.ro/rss')
                     ]
                 };
+                
+                // Backup hardcoded news for demonstration
+                this.fallbackNews = [
+                    {
+                        id: 'demo1',
+                        title: 'România înregistrează creștere economică record în sectorul tehnologic',
+                        summary: 'Economia românească a înregistrat o creștere semnificativă în primul trimestru, cu sectorul IT în fruntea dezvoltării. Companiile locale de tehnologie raportează venituri în creștere cu 25% față de anul trecut.',
+                        link: 'https://example.com/news1',
+                        pubDate: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+                        source: 'Tech România',
+                        category: 'technology',
+                        image: '💻',
+                        views: '2.1k',
+                        bookmarked: false
+                    },
+                    {
+                        id: 'demo2',
+                        title: 'Investiții majore în infrastructura energetică din România',
+                        summary: 'Guvernul român a anunțat un pachet de investiții de 5 miliarde de euro în energie regenerabilă și modernizarea rețelei electrice naționale pentru următorii trei ani.',
+                        link: 'https://example.com/news2',
+                        pubDate: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+                        source: 'Energy News',
+                        category: 'business',
+                        image: '⚡',
+                        views: '1.8k',
+                        bookmarked: false
+                    },
+                    {
+                        id: 'demo3',
+                        title: 'Echipa națională de fotbal a României se pregătește pentru competiția europeană',
+                        summary: 'Selecționerul echipei naționale a anunțat lotul pentru meciurile din Nations League. Printre convocați se numără și mai mulți jucători tineri cu potențial mare.',
+                        link: 'https://example.com/news3',
+                        pubDate: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+                        source: 'Sport Total',
+                        category: 'sports',
+                        image: '⚽',
+                        views: '3.2k',
+                        bookmarked: false
+                    },
+                    {
+                        id: 'demo4',
+                        title: 'Cercetătorii români fac progrese în tratamentul cancerului',
+                        summary: 'O echipă de cercetători de la Universitatea din București a dezvoltat o nouă metodă de tratament care arată rezultate promițătoare în testele clinice.',
+                        link: 'https://example.com/news4',
+                        pubDate: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
+                        source: 'Știință Plus',
+                        category: 'health',
+                        image: '🏥',
+                        views: '1.5k',
+                        bookmarked: false
+                    },
+                    {
+                        id: 'demo5',
+                        title: 'Festival de film românesc câștigă premii internaționale',
+                        summary: 'Filmul românesc "Povești din Carpați" a câștigat marele premiu la festivalul internațional de la Cannes, aducând din nou România în atenția cinematografiei mondiale.',
+                        link: 'https://example.com/news5',
+                        pubDate: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+                        source: 'Cinema Arte',
+                        category: 'entertainment',
+                        image: '🎬',
+                        views: '2.7k',
+                        bookmarked: false
+                    },
+                    {
+                        id: 'demo6',
+                        title: 'Lansarea unui nou satelit românesc pentru monitorizarea climatică',
+                        summary: 'Agenția Spațială Română a lansat cu succes satelitul "RoClimate-1" care va monitoriza schimbările climatice și va furniza date importante pentru agricultură.',
+                        link: 'https://example.com/news6',
+                        pubDate: new Date(Date.now() - 16 * 60 * 60 * 1000), // 16 hours ago
+                        source: 'Space România',
+                        category: 'science',
+                        image: '🛰️',
+                        views: '1.9k',
+                        bookmarked: false
+                    }
+                ];
                 
                 this.initializeApp();
             }
@@ -708,14 +791,27 @@
                 this.updateStatus('🔄 Sincronizez știrile...', 'loading');
                 
                 try {
-                    const articles = await this.fetchNewsFromMultipleSources();
+                    // Try to fetch real RSS first
+                    let articles = await this.fetchNewsFromMultipleSources();
+                    
+                    // If no articles from RSS, use fallback demo news
+                    if (articles.length === 0) {
+                        console.log('📰 Folosesc știrile demo - RSS-urile nu sunt disponibile');
+                        articles = this.fallbackNews;
+                        this.updateStatus('📰 Afișez știri demo - RSS temporar indisponibil', 'warning');
+                    } else {
+                        this.updateStatus(`✅ RSS actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${articles.length} știri)`, 'success');
+                    }
+                    
                     this.articles = this.processArticles(articles);
                     this.filterAndRenderNews();
-                    this.updateStatus(`✅ Actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${this.articles.length} știri)`, 'success');
                     this.lastUpdate = new Date();
                 } catch (error) {
                     console.error('Eroare la încărcarea știrilor:', error);
-                    this.handleError();
+                    // Use fallback news on error
+                    this.articles = this.fallbackNews;
+                    this.filterAndRenderNews();
+                    this.updateStatus('⚠️ Folosesc știrile demo - problema de conectivitate', 'warning');
                 } finally {
                     this.isLoading = false;
                 }
@@ -755,26 +851,28 @@
             
             parseRSSData(data) {
                 const articles = [];
-                const items = data.items || data.rss?.channel?.item || [];
                 
-                items.forEach(item => {
-                    try {
-                        articles.push({
-                            id: this.generateId(item.title + item.link),
-                            title: this.cleanText(item.title),
-                            summary: this.extractSummary(item.description || item.summary),
-                            link: item.link,
-                            pubDate: new Date(item.pubDate || item.published),
-                            source: this.extractSource(item.link),
-                            category: this.currentCategory,
-                            image: this.getRandomEmoji(),
-                            views: this.generateViews(),
-                            bookmarked: this.bookmarkedNews.includes(this.generateId(item.title + item.link))
-                        });
-                    } catch (error) {
-                        console.warn('Eroare la parsarea articolului:', error);
-                    }
-                });
+                // Handle rss2json format
+                if (data.items && Array.isArray(data.items)) {
+                    data.items.forEach(item => {
+                        try {
+                            articles.push({
+                                id: this.generateId(item.title + item.link),
+                                title: this.cleanText(item.title),
+                                summary: this.extractSummary(item.description || item.content),
+                                link: item.link,
+                                pubDate: new Date(item.pubDate),
+                                source: this.extractSource(item.link),
+                                category: this.currentCategory,
+                                image: this.getRandomEmoji(),
+                                views: this.generateViews(),
+                                bookmarked: this.bookmarkedNews.includes(this.generateId(item.title + item.link))
+                            });
+                        } catch (error) {
+                            console.warn('Eroare la parsarea articolului:', error);
+                        }
+                    });
+                }
                 
                 return articles;
             }
@@ -956,8 +1054,19 @@
             
             updateStatus(message, type = 'info') {
                 const statusText = document.getElementById('statusText');
+                const statusBar = document.getElementById('newsStatus');
+                
                 if (statusText) {
                     statusText.textContent = message;
+                }
+                
+                if (statusBar) {
+                    // Remove existing status classes
+                    statusBar.classList.remove('success', 'warning', 'error');
+                    // Add new status class
+                    if (type !== 'info') {
+                        statusBar.classList.add(type);
+                    }
                 }
             }
             
