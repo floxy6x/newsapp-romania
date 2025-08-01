@@ -632,25 +632,31 @@
                 this.lastUpdate = null;
                 this.autoRefreshInterval = null;
                 
-                // Multiple working RSS sources with CORS-friendly proxies
+                // Multiple working RSS proxy services for better reliability
+                this.rssProxies = [
+                    'https://api.rss2json.com/v1/api.json?rss_url=',
+                    'https://cors-anywhere.herokuapp.com/',
+                    'https://api.allorigins.win/get?url='
+                ];
+                
                 this.rssSources = {
                     general: [
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.digi24.ro/rss'),
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.hotnews.ro/rss'),
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.libertatea.ro/rss'),
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.g4media.ro/feed')
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss', 
+                        'https://www.libertatea.ro/rss',
+                        'https://www.g4media.ro/feed'
                     ],
                     business: [
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.zf.ro/rss'),
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.wall-street.ro/rss/all.xml')
+                        'https://www.zf.ro/rss',
+                        'https://www.wall-street.ro/rss/all.xml'
                     ],
                     technology: [
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.zf.ro/rss/sectiune/it-c-telecom-15'),
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://start-up.ro/feed/')
+                        'https://www.zf.ro/rss/sectiune/it-c-telecom-15',
+                        'https://start-up.ro/feed/'
                     ],
                     sports: [
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.prosport.ro/rss/'),
-                        'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.gsp.ro/rss')
+                        'https://www.prosport.ro/rss/',
+                        'https://www.gsp.ro/rss'
                     ]
                 };
                 
@@ -790,26 +796,33 @@
                 this.isLoading = true;
                 this.updateStatus('🔄 Sincronizez știrile...', 'loading');
                 
+                console.log('🚀 Starting loadNews...');
+                
                 try {
                     // Try to fetch real RSS first
                     let articles = await this.fetchNewsFromMultipleSources();
                     
+                    console.log(`📊 Articles after fetch: ${articles.length}`);
+                    
                     // If no articles from RSS, use fallback demo news
                     if (articles.length === 0) {
-                        console.log('📰 Folosesc știrile demo - RSS-urile nu sunt disponibile');
-                        articles = this.fallbackNews;
+                        console.log('📰 Zero articles from RSS - using demo news');
+                        articles = [...this.fallbackNews]; // Copy array
                         this.updateStatus('📰 Afișez știri demo - RSS temporar indisponibil', 'warning');
                     } else {
+                        console.log(`🎉 Success! Got ${articles.length} real articles from RSS`);
                         this.updateStatus(`✅ RSS actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${articles.length} știri)`, 'success');
                     }
                     
                     this.articles = this.processArticles(articles);
+                    console.log(`📝 Processed articles: ${this.articles.length}`);
+                    
                     this.filterAndRenderNews();
                     this.lastUpdate = new Date();
                 } catch (error) {
-                    console.error('Eroare la încărcarea știrilor:', error);
+                    console.error('❌ Error in loadNews:', error);
                     // Use fallback news on error
-                    this.articles = this.fallbackNews;
+                    this.articles = [...this.fallbackNews];
                     this.filterAndRenderNews();
                     this.updateStatus('⚠️ Folosesc știrile demo - problema de conectivitate', 'warning');
                 } finally {
@@ -818,85 +831,181 @@
             }
             
             async fetchNewsFromMultipleSources() {
-                const sources = this.rssSources[this.currentCategory] || this.rssSources.general;
-                const promises = sources.map(url => this.fetchFromRSS(url));
+                const rawSources = this.rssSources[this.currentCategory] || this.rssSources.general;
+                console.log(`🎯 Fetching for category: ${this.currentCategory}`);
+                console.log(`📡 Raw RSS sources:`, rawSources);
+                
+                // Try multiple proxy methods for each source
+                const allAttempts = [];
+                
+                rawSources.forEach((rssUrl, index) => {
+                    // Method 1: RSS2JSON
+                    allAttempts.push({
+                        method: 'rss2json',
+                        url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
+                        parser: 'rss2json'
+                    });
+                    
+                    // Method 2: AllOrigins
+                    allAttempts.push({
+                        method: 'allorigins',
+                        url: `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+                        parser: 'allorigins'
+                    });
+                });
+                
+                console.log(`🚀 Total attempts: ${allAttempts.length}`);
+                
+                const promises = allAttempts.map((attempt, index) => {
+                    console.log(`🔄 Attempt ${index + 1} (${attempt.method}):`, attempt.url);
+                    return this.fetchFromProxy(attempt);
+                });
                 
                 const results = await Promise.allSettled(promises);
                 const articles = [];
                 
                 results.forEach((result, index) => {
                     if (result.status === 'fulfilled') {
-                        articles.push(...result.value);
-                        console.log(`✅ Sursă ${index + 1}: ${result.value.length} articole`);
+                        const fetchedArticles = result.value;
+                        articles.push(...fetchedArticles);
+                        console.log(`✅ Attempt ${index + 1} (${allAttempts[index].method}): ${fetchedArticles.length} articole`);
+                        if (fetchedArticles.length > 0) {
+                            console.log('📰 Sample article:', fetchedArticles[0].title.substr(0, 50));
+                        }
                     } else {
-                        console.warn(`❌ Sursă ${index + 1} eșuată:`, result.reason);
+                        console.warn(`❌ Attempt ${index + 1} (${allAttempts[index].method}) failed:`, result.reason.message);
+                    }
+                });
+                
+                console.log(`🎉 Total articles collected: ${articles.length}`);
+                return articles;
+            }
+            
+            async fetchFromProxy(attempt) {
+                try {
+                    console.log(`🔄 Fetching via ${attempt.method}:`, attempt.url);
+                    const response = await fetch(attempt.url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    const data = await response.json();
+                    console.log(`📊 ${attempt.method} response:`, data);
+                    
+                    return this.parseProxyData(data, attempt.parser);
+                } catch (error) {
+                    console.warn(`❌ ${attempt.method} failed:`, error);
+                    return [];
+                }
+            }
+            
+            parseProxyData(data, parser) {
+                const articles = [];
+                
+                try {
+                    if (parser === 'rss2json') {
+                        // Handle RSS2JSON format
+                        if (data.status === 'ok' && data.items && Array.isArray(data.items)) {
+                            console.log(`📰 RSS2JSON: Found ${data.items.length} items`);
+                            return this.parseRSSItems(data.items);
+                        }
+                    } else if (parser === 'allorigins') {
+                        // Handle AllOrigins format
+                        if (data.contents) {
+                            console.log(`📰 AllOrigins: Parsing XML...`);
+                            return this.parseXMLString(data.contents);
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`❌ Parse error for ${parser}:`, error);
+                }
+                
+                return articles;
+            }
+            
+            parseRSSItems(items) {
+                const articles = [];
+                
+                items.forEach((item, index) => {
+                    try {
+                        if (!item.title || !item.link) {
+                            console.warn(`⚠️ Skipping item ${index}: missing title or link`);
+                            return;
+                        }
+                        
+                        const cleanTitle = this.cleanText(item.title);
+                        const cleanSummary = this.extractSummary(item.description || item.content);
+                        
+                        articles.push({
+                            id: this.generateId(cleanTitle + item.link + index),
+                            title: cleanTitle,
+                            summary: cleanSummary,
+                            link: item.link,
+                            pubDate: new Date(item.pubDate || Date.now()),
+                            source: this.extractSource(item.link),
+                            category: this.currentCategory,
+                            image: this.getRandomEmoji(),
+                            views: this.generateViews(),
+                            bookmarked: false
+                        });
+                        
+                        console.log(`✅ Parsed: ${cleanTitle.substr(0, 50)}...`);
+                    } catch (error) {
+                        console.warn(`❌ Item parse error ${index}:`, error);
                     }
                 });
                 
                 return articles;
             }
             
-            async fetchFromRSS(url) {
+            parseXMLString(xmlString) {
                 try {
-                    console.log('🔄 Fetching from:', url);
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+                    const items = xmlDoc.querySelectorAll('item');
                     
-                    const data = await response.json();
-                    console.log('📊 RSS Data received:', data);
+                    console.log(`📰 XML: Found ${items.length} items`);
                     
-                    // Check if RSS was successfully parsed
-                    if (data.status === 'ok' && data.items) {
-                        console.log(`✅ Found ${data.items.length} items`);
-                        return this.parseRSSData(data);
-                    } else {
-                        console.warn('⚠️ RSS not parsed correctly:', data);
-                        return [];
-                    }
+                    const articles = [];
+                    items.forEach((item, index) => {
+                        try {
+                            const title = item.querySelector('title')?.textContent;
+                            const link = item.querySelector('link')?.textContent;
+                            const description = item.querySelector('description')?.textContent;
+                            const pubDate = item.querySelector('pubDate')?.textContent;
+                            
+                            if (title && link) {
+                                const cleanTitle = this.cleanText(title);
+                                const cleanSummary = this.extractSummary(description);
+                                
+                                articles.push({
+                                    id: this.generateId(cleanTitle + link + index),
+                                    title: cleanTitle,
+                                    summary: cleanSummary,
+                                    link: link,
+                                    pubDate: new Date(pubDate || Date.now()),
+                                    source: this.extractSource(link),
+                                    category: this.currentCategory,
+                                    image: this.getRandomEmoji(),
+                                    views: this.generateViews(),
+                                    bookmarked: false
+                                });
+                                
+                                console.log(`✅ XML Parsed: ${cleanTitle.substr(0, 50)}...`);
+                            }
+                        } catch (error) {
+                            console.warn(`❌ XML item parse error ${index}:`, error);
+                        }
+                    });
+                    
+                    return articles;
                 } catch (error) {
-                    console.warn(`❌ RSS fetch failed for ${url}:`, error);
+                    console.warn(`❌ XML parsing failed:`, error);
                     return [];
                 }
             }
             
             parseRSSData(data) {
-                const articles = [];
-                
-                // Handle rss2json format
-                if (data.items && Array.isArray(data.items)) {
-                    data.items.forEach((item, index) => {
-                        try {
-                            // Ensure we have minimum required data
-                            if (!item.title || !item.link) {
-                                console.warn(`⚠️ Skipping item ${index}: missing title or link`);
-                                return;
-                            }
-                            
-                            const cleanTitle = this.cleanText(item.title);
-                            const cleanSummary = this.extractSummary(item.description || item.content);
-                            
-                            articles.push({
-                                id: this.generateId(cleanTitle + item.link + index),
-                                title: cleanTitle,
-                                summary: cleanSummary,
-                                link: item.link,
-                                pubDate: new Date(item.pubDate || Date.now()),
-                                source: this.extractSource(item.link),
-                                category: this.currentCategory,
-                                image: this.getRandomEmoji(),
-                                views: this.generateViews(),
-                                bookmarked: false // Will be updated later
-                            });
-                            
-                            console.log(`✅ Parsed article: ${cleanTitle.substr(0, 50)}...`);
-                        } catch (error) {
-                            console.warn(`❌ Eroare la parsarea articolului ${index}:`, error);
-                        }
-                    });
-                }
-                
-                console.log(`📰 Total articles parsed: ${articles.length}`);
-                return articles;
+                // This method is now handled by parseProxyData
+                return this.parseRSSItems(data.items || []);
             }
             
             processArticles(articles) {
