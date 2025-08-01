@@ -591,6 +591,7 @@
                         LIVE
                     </div>
                     <button class="action-btn" id="refreshBtn" title="Actualizează">🔄</button>
+                    <button class="action-btn" id="notificationBtn" title="Notificări">🔔</button>
                     <button class="action-btn" id="settingsBtn" title="Setări">⚙️</button>
                 </div>
             </div>
@@ -706,6 +707,22 @@
                 }
             }
             
+            loadNotificationSettings() {
+                try {
+                    return JSON.parse(localStorage.getItem('notificationsEnabled') || 'false');
+                } catch {
+                    return false;
+                }
+            }
+            
+            saveNotificationSettings() {
+                try {
+                    localStorage.setItem('notificationsEnabled', JSON.stringify(this.notificationsEnabled));
+                } catch {
+                    console.warn('Cannot save notification settings');
+                }
+            }
+            
             saveBookmarks() {
                 try {
                     localStorage.setItem('bookmarkedNews', JSON.stringify(this.bookmarkedNews));
@@ -813,9 +830,12 @@
             initializeApp() {
                 console.log('🚀 Inițializez aplicația de știri România...');
                 this.setupEventListeners();
+                this.checkInstallStatus();
+                this.requestNotificationPermission();
                 this.loadAllNews();
                 this.startAutoRefresh();
                 this.updateLastRefreshTime();
+                this.showWelcomeNotification();
             }
             
             setupEventListeners() {
@@ -846,6 +866,9 @@
                 // Refresh buttons
                 document.getElementById('refreshBtn')?.addEventListener('click', () => this.loadAllNews(true));
                 document.getElementById('manualRefresh')?.addEventListener('click', () => this.loadAllNews(true));
+                
+                // Notification toggle
+                document.getElementById('notificationBtn')?.addEventListener('click', () => this.toggleNotifications());
                 
                 // Settings
                 document.getElementById('settingsBtn')?.addEventListener('click', () => this.showSettings());
@@ -915,6 +938,15 @@
                         this.updateStatus(`⚠️ Parțial actualizat: ${allArticles.length} reale + demo (${totalSuccessfulSources}/7 categorii)`, 'warning');
                     } else {
                         this.allArticles = this.processArticles(allArticles);
+                        
+                        // Check for new articles and send notification
+                        if (this.lastArticleCount > 0 && allArticles.length > this.lastArticleCount) {
+                            const newArticlesCount = allArticles.length - this.lastArticleCount;
+                            this.sendNotification('📰 Știri noi disponibile!', 
+                                `${newArticlesCount} articole noi au fost adăugate.`);
+                        }
+                        this.lastArticleCount = allArticles.length;
+                        
                         this.updateStatus(`✅ Actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${this.allArticles.length} știri din ${totalSuccessfulSources}/7 categorii)`, 'success');
                     }
                     
@@ -1381,15 +1413,125 @@
             }
             
             showSettings() {
-                alert(`⚙️ Setări Aplicație Știri România:
+                const notificationStatus = this.notificationsEnabled ? 'Activate' : 'Dezactivate';
+                const installStatus = this.isInstalled ? 'Instalată ca PWA' : 'Nu este instalată';
+                
+                const userChoice = confirm(`⚙️ Setări Aplicație Știri România:
 
-• Auto-refresh: 15 minute
-• Surse per categorie: 4 RSS feeds
-• Articole maxime: 200
-• Categorii: 7 disponibile
-• Bookmarks: ${this.bookmarkedNews.length} salvate
+📱 Status PWA: ${installStatus}
+🔔 Notificări: ${notificationStatus}
+📊 Auto-refresh: 15 minute
+🔗 Surse per categorie: 4-6 RSS feeds
+📄 Articole în cache: ${this.allArticles.length}
+⭐ Bookmarks salvate: ${this.bookmarkedNews.length}
 
-Aplicația funcționează complet offline după prima încărcare!`);
+Vrei să ${this.notificationsEnabled ? 'dezactivezi' : 'activezi'} notificările?`);
+
+                if (userChoice) {
+                    this.toggleNotifications();
+                }
+            }
+            
+            async requestNotificationPermission() {
+                if ('Notification' in window) {
+                    const permission = await Notification.requestPermission();
+                    console.log('🔔 Notification permission:', permission);
+                    
+                    if (permission === 'granted' && !this.notificationsEnabled) {
+                        this.notificationsEnabled = true;
+                        this.saveNotificationSettings();
+                    }
+                }
+            }
+            
+            async toggleNotifications() {
+                if (!('Notification' in window)) {
+                    alert('❌ Browser-ul nu suportă notificări');
+                    return;
+                }
+                
+                if (this.notificationsEnabled) {
+                    // Dezactivează notificările
+                    this.notificationsEnabled = false;
+                    this.saveNotificationSettings();
+                    alert('🔕 Notificările au fost dezactivate');
+                } else {
+                    // Activează notificările
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        this.notificationsEnabled = true;
+                        this.saveNotificationSettings();
+                        alert('🔔 Notificările au fost activate!');
+                        
+                        // Notificare de test
+                        this.sendNotification('🎉 Notificări activate!', 
+                            'Vei primi alertă când sunt știri noi disponibile.');
+                    } else {
+                        alert('❌ Permisiunea pentru notificări a fost refuzată');
+                    }
+                }
+            }
+            
+            sendNotification(title, body, options = {}) {
+                if (!this.notificationsEnabled || !('Notification' in window) || Notification.permission !== 'granted') {
+                    return;
+                }
+                
+                const defaultOptions = {
+                    body: body,
+                    icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+8J+TsDwvdGV4dD48L3N2Zz4=',
+                    badge: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+8J+TsDwvdGV4dD48L3N2Zz4=',
+                    vibrate: [100, 50, 100],
+                    tag: 'stiri-romania',
+                    requireInteraction: false,
+                    silent: false,
+                    ...options
+                };
+                
+                try {
+                    const notification = new Notification(title, defaultOptions);
+                    
+                    // Auto-close după 5 secunde
+                    setTimeout(() => {
+                        notification.close();
+                    }, 5000);
+                    
+                    // Click pe notificare deschide aplicația
+                    notification.onclick = () => {
+                        window.focus();
+                        notification.close();
+                    };
+                    
+                    console.log('🔔 Notification sent:', title);
+                } catch (error) {
+                    console.warn('❌ Failed to send notification:', error);
+                }
+            }
+            
+            showWelcomeNotification() {
+                // Notificare de bun venit doar la prima vizită
+                if (!localStorage.getItem('hasVisitedBefore')) {
+                    setTimeout(() => {
+                        if (this.notificationsEnabled) {
+                            this.sendNotification('🎉 Bun venit la Știri România!', 
+                                'Aplicația ta de știri funcționează și offline.');
+                        }
+                        localStorage.setItem('hasVisitedBefore', 'true');
+                    }, 3000);
+                }
+            }
+            
+            checkInstallStatus() {
+                // Verifică dacă aplicația rulează ca PWA instalată
+                if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+                    this.isInstalled = true;
+                    console.log('📱 App running as installed PWA');
+                } else if (window.navigator.standalone === true) {
+                    this.isInstalled = true;
+                    console.log('📱 App running as installed on iOS');
+                } else {
+                    console.log('🌐 App running in browser');
+                }
             }
         }
         
@@ -1398,6 +1540,94 @@ Aplicația funcționează complet offline după prima încărcare!`);
         document.addEventListener('DOMContentLoaded', () => {
             newsApp = new NewsApp();
         });
+        
+        // PWA Install prompt handling
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install banner after 30 seconds if not installed
+            setTimeout(() => {
+                if (deferredPrompt && !newsApp.isInstalled) {
+                    showInstallBanner();
+                }
+            }, 30000);
+        });
+        
+        function showInstallBanner() {
+            const banner = document.createElement('div');
+            banner.className = 'install-banner';
+            banner.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span>📱</span>
+                    <span>Instalează aplicația pentru o experiență mai bună!</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="installApp()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 6px 12px; border-radius: 16px; font-size: 12px; cursor: pointer;">Instalează</button>
+                    <button onclick="dismissInstallBanner()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; padding: 4px;">×</button>
+                </div>
+            `;
+            banner.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; 
+                background: linear-gradient(135deg, #1a73e8, #1557b0); 
+                color: white; padding: 12px 16px; 
+                display: flex; align-items: center; justify-content: space-between; 
+                z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            `;
+            
+            document.body.prepend(banner);
+        }
+        
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ User accepted the install prompt');
+                        newsApp.sendNotification('🎉 Aplicația a fost instalată!', 
+                            'Acum poți accesa Știri România direct de pe home screen.');
+                    }
+                    deferredPrompt = null;
+                    dismissInstallBanner();
+                });
+            }
+        }
+        
+        function dismissInstallBanner() {
+            const banner = document.querySelector('.install-banner');
+            if (banner) {
+                banner.remove();
+            }
+        }
+        
+        // Service Worker registration with better error handling
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('✅ SW registered successfully');
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New update available
+                                    if (newsApp && newsApp.notificationsEnabled) {
+                                        newsApp.sendNotification('🔄 Update disponibil!', 
+                                            'O versiune nouă a aplicației este disponibilă.');
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.log('❌ SW registration failed:', error);
+                    });
+            });
+        }
     </script>
 </body>
 </html>
