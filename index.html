@@ -655,39 +655,39 @@
                     ],
                     business: [
                         'https://www.zf.ro/rss',
-                        'https://www.wall-street.ro/rss/all.xml',
                         'https://economie.hotnews.ro/rss',
-                        'https://www.money.ro/rss/'
+                        'https://www.digi24.ro/rss/economic',
+                        'https://www.libertatea.ro/rss/economic'
                     ],
                     technology: [
-                        'https://www.zf.ro/rss/sectiune/it-c-telecom-15',
-                        'https://start-up.ro/feed/',
-                        'https://www.hotnews.ro/rss/tehnologie',
-                        'https://www.digi24.ro/rss/tehnologie'
+                        'https://www.digi24.ro/rss/stiinta-tehnologie',
+                        'https://www.hotnews.ro/rss/esential',
+                        'https://www.libertatea.ro/rss/tehnologie',
+                        'https://www.zf.ro/rss'
                     ],
                     sports: [
-                        'https://www.prosport.ro/rss/',
-                        'https://www.gsp.ro/rss',
+                        'https://www.digi24.ro/rss/sport',
                         'https://sport.hotnews.ro/rss',
-                        'https://www.digi24.ro/rss/sport'
+                        'https://www.libertatea.ro/rss/sport',
+                        'https://www.prosport.ro/rss/'
                     ],
                     health: [
                         'https://www.digi24.ro/rss/sanatate',
                         'https://www.hotnews.ro/rss/sanatate',
                         'https://www.libertatea.ro/rss/sanatate',
-                        'https://adevarul.ro/rss/sanatate.xml'
+                        'https://www.digi24.ro/rss/stiri'
                     ],
                     entertainment: [
-                        'https://www.libertatea.ro/rss/entertainment',
-                        'https://www.cancan.ro/rss/',
-                        'https://www.click.ro/rss',
-                        'https://www.digi24.ro/rss/entertainment'
+                        'https://www.libertatea.ro/rss/vedete',
+                        'https://www.digi24.ro/rss/showbiz',
+                        'https://www.hotnews.ro/rss/cultura',
+                        'https://www.cancan.ro/rss/'
                     ],
                     science: [
                         'https://www.digi24.ro/rss/stiinta-tehnologie',
                         'https://www.hotnews.ro/rss/stiinta',
-                        'https://www.descopera.ro/rss',
-                        'https://www.scientia.ro/rss'
+                        'https://www.libertatea.ro/rss/sanatate',
+                        'https://www.digi24.ro/rss/externe'
                     ]
                 };
                 
@@ -880,33 +880,51 @@
                 
                 try {
                     const allArticles = [];
+                    let totalSuccessfulSources = 0;
                     
-                    // Load news from all categories
+                    // Load news from all categories with better error handling
                     for (const [category, sources] of Object.entries(this.rssSources)) {
-                        console.log(`🎯 Loading ${category} news...`);
-                        const categoryArticles = await this.fetchCategoryNews(category, sources);
-                        allArticles.push(...categoryArticles);
+                        console.log(`\n🎯 Loading ${category} news...`);
+                        try {
+                            const categoryArticles = await this.fetchCategoryNews(category, sources);
+                            allArticles.push(...categoryArticles);
+                            if (categoryArticles.length > 0) {
+                                totalSuccessfulSources++;
+                            }
+                        } catch (error) {
+                            console.warn(`❌ Failed to load ${category}:`, error);
+                            // Add fallback news for this category
+                            if (this.fallbackNews[category]) {
+                                allArticles.push(...this.fallbackNews[category]);
+                                console.log(`📰 Using fallback news for ${category}`);
+                            }
+                        }
                     }
                     
-                    console.log(`📰 Total articles collected: ${allArticles.length}`);
+                    console.log(`\n📰 Total articles collected: ${allArticles.length} from ${totalSuccessfulSources} categories`);
                     
                     if (allArticles.length === 0) {
-                        console.log('📰 No RSS articles - using fallback news');
+                        console.log('📰 No articles at all - using all fallback news');
                         this.allArticles = this.getAllFallbackNews();
-                        this.updateStatus('📰 Afișez știri demo - RSS temporar indisponibil', 'warning');
+                        this.updateStatus('📰 Afișez știri demo - RSS complet indisponibil', 'warning');
+                    } else if (totalSuccessfulSources < 3) {
+                        // Mix real articles with some fallback
+                        const fallbackArticles = this.getAllFallbackNews();
+                        this.allArticles = this.processArticles([...allArticles, ...fallbackArticles]);
+                        this.updateStatus(`⚠️ Parțial actualizat: ${allArticles.length} reale + demo (${totalSuccessfulSources}/7 categorii)`, 'warning');
                     } else {
                         this.allArticles = this.processArticles(allArticles);
-                        this.updateStatus(`✅ Actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${this.allArticles.length} știri)`, 'success');
+                        this.updateStatus(`✅ Actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${this.allArticles.length} știri din ${totalSuccessfulSources}/7 categorii)`, 'success');
                     }
                     
                     this.filterAndRenderNews();
                     this.lastUpdate = new Date();
                     
                 } catch (error) {
-                    console.error('❌ Error loading news:', error);
+                    console.error('❌ Critical error loading news:', error);
                     this.allArticles = this.getAllFallbackNews();
                     this.filterAndRenderNews();
-                    this.updateStatus('⚠️ Folosesc știrile demo - problema de conectivitate', 'warning');
+                    this.updateStatus('⚠️ Folosesc știrile demo - problema de conectivitate', 'error');
                 } finally {
                     this.isLoading = false;
                 }
@@ -922,26 +940,49 @@
             
             async fetchCategoryNews(category, sources) {
                 const articles = [];
+                let successCount = 0;
                 
-                for (const rssUrl of sources) {
+                console.log(`🎯 Fetching ${category} from ${sources.length} sources...`);
+                
+                for (let i = 0; i < sources.length; i++) {
+                    const rssUrl = sources[i];
                     try {
-                        // Try RSS2JSON first
+                        console.log(`🔄 Trying source ${i + 1}/${sources.length}: ${rssUrl}`);
+                        
+                        // Try RSS2JSON
                         const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
                         const response = await fetch(rss2jsonUrl);
                         
                         if (response.ok) {
                             const data = await response.json();
-                            if (data.status === 'ok' && data.items) {
+                            if (data.status === 'ok' && data.items && data.items.length > 0) {
                                 const parsedArticles = this.parseRSSItems(data.items, category);
                                 articles.push(...parsedArticles);
-                                console.log(`✅ ${category}: ${parsedArticles.length} articles from ${rssUrl}`);
+                                successCount++;
+                                console.log(`✅ ${category} source ${i + 1}: ${parsedArticles.length} articles`);
+                                
+                                // Stop after getting enough articles from 2 successful sources
+                                if (successCount >= 2 && articles.length >= 10) {
+                                    console.log(`🎯 ${category}: Got enough articles, stopping early`);
+                                    break;
+                                }
+                            } else {
+                                console.warn(`⚠️ ${category} source ${i + 1}: Invalid RSS data`);
                             }
+                        } else {
+                            console.warn(`❌ ${category} source ${i + 1}: HTTP ${response.status}`);
                         }
                     } catch (error) {
-                        console.warn(`❌ Failed to fetch ${category} from ${rssUrl}:`, error.message);
+                        console.warn(`❌ ${category} source ${i + 1} failed:`, error.message);
+                    }
+                    
+                    // Small delay between requests to avoid rate limiting
+                    if (i < sources.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
                 
+                console.log(`📊 ${category}: ${articles.length} total articles from ${successCount}/${sources.length} sources`);
                 return articles;
             }
             
