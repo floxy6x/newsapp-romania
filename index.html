@@ -838,13 +838,23 @@
             
             async fetchFromRSS(url) {
                 try {
+                    console.log('🔄 Fetching from:', url);
                     const response = await fetch(url);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     
                     const data = await response.json();
-                    return this.parseRSSData(data);
+                    console.log('📊 RSS Data received:', data);
+                    
+                    // Check if RSS was successfully parsed
+                    if (data.status === 'ok' && data.items) {
+                        console.log(`✅ Found ${data.items.length} items`);
+                        return this.parseRSSData(data);
+                    } else {
+                        console.warn('⚠️ RSS not parsed correctly:', data);
+                        return [];
+                    }
                 } catch (error) {
-                    console.warn(`RSS fetch failed for ${url}:`, error);
+                    console.warn(`❌ RSS fetch failed for ${url}:`, error);
                     return [];
                 }
             }
@@ -854,26 +864,38 @@
                 
                 // Handle rss2json format
                 if (data.items && Array.isArray(data.items)) {
-                    data.items.forEach(item => {
+                    data.items.forEach((item, index) => {
                         try {
+                            // Ensure we have minimum required data
+                            if (!item.title || !item.link) {
+                                console.warn(`⚠️ Skipping item ${index}: missing title or link`);
+                                return;
+                            }
+                            
+                            const cleanTitle = this.cleanText(item.title);
+                            const cleanSummary = this.extractSummary(item.description || item.content);
+                            
                             articles.push({
-                                id: this.generateId(item.title + item.link),
-                                title: this.cleanText(item.title),
-                                summary: this.extractSummary(item.description || item.content),
+                                id: this.generateId(cleanTitle + item.link + index),
+                                title: cleanTitle,
+                                summary: cleanSummary,
                                 link: item.link,
-                                pubDate: new Date(item.pubDate),
+                                pubDate: new Date(item.pubDate || Date.now()),
                                 source: this.extractSource(item.link),
                                 category: this.currentCategory,
                                 image: this.getRandomEmoji(),
                                 views: this.generateViews(),
-                                bookmarked: this.bookmarkedNews.includes(this.generateId(item.title + item.link))
+                                bookmarked: false // Will be updated later
                             });
+                            
+                            console.log(`✅ Parsed article: ${cleanTitle.substr(0, 50)}...`);
                         } catch (error) {
-                            console.warn('Eroare la parsarea articolului:', error);
+                            console.warn(`❌ Eroare la parsarea articolului ${index}:`, error);
                         }
                     });
                 }
                 
+                console.log(`📰 Total articles parsed: ${articles.length}`);
                 return articles;
             }
             
@@ -985,16 +1007,34 @@
             
             // Utility functions
             generateId(text) {
-                return btoa(text).replace(/[^a-zA-Z0-9]/g, '').substr(0, 16);
+                // Fix for Romanian characters - use a simple hash instead of btoa
+                let hash = 0;
+                const cleanText = text.replace(/[^a-zA-Z0-9]/g, '');
+                for (let i = 0; i < cleanText.length; i++) {
+                    const char = cleanText.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // Convert to 32-bit integer
+                }
+                return Math.abs(hash).toString(36).substr(0, 16);
             }
             
             cleanText(text) {
-                return text.replace(/<[^>]*>/g, '').trim().substr(0, 200);
+                if (!text) return '';
+                return text
+                    .replace(/<[^>]*>/g, '') // Remove HTML tags
+                    .replace(/&[^;]+;/g, ' ') // Remove HTML entities
+                    .trim()
+                    .substr(0, 200);
             }
             
             extractSummary(description) {
-                if (!description) return 'Nu este disponibil un rezumat...';
-                return this.cleanText(description).substr(0, 150) + '...';
+                if (!description) return 'Nu este disponibil un rezumat pentru acest articol...';
+                
+                const cleanDesc = this.cleanText(description);
+                if (cleanDesc.length > 150) {
+                    return cleanDesc.substr(0, 147) + '...';
+                }
+                return cleanDesc || 'Rezumat indisponibil...';
             }
             
             extractSource(url) {
