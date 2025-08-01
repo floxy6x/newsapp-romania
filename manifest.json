@@ -1,523 +1,77 @@
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stiri PWA - Design Modern</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f8fafc; 
-            color: #1e293b;
+{
+  "name": "Știri România - Live News Feed",
+  "short_name": "Știri România",
+  "description": "Aplicația completă de știri din România cu actualizări în timp real",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a73e8",
+  "theme_color": "#1a73e8",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ro",
+  "categories": ["news", "education", "lifestyle"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+8J+TsDwvdGV4dD48L3N2Zz4=",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+8J+TsDwvdGV4dD48L3N2Zz4=",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Business",
+      "short_name": "Business",
+      "description": "Știri de business și economie",
+      "url": "/?category=business",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+8J+SvDwvdGV4dD48L3N2Zz4=",
+          "sizes": "96x96"
         }
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      ]
+    },
+    {
+      "name": "Tech",
+      "short_name": "Tech",
+      "description": "Știri de tehnologie",
+      "url": "/?category=technology",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+8J+UpzwvdGV4dD48L3N2Zz4=",
+          "sizes": "96x96"
         }
-        .title { font-size: 20px; font-weight: 700; }
-        .btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            padding: 8px;
-            cursor: pointer;
-            border-radius: 8px;
-            color: white;
+      ]
+    },
+    {
+      "name": "Sport",
+      "short_name": "Sport",
+      "description": "Știri sportive",
+      "url": "/?category=sports",
+      "icons": [
+        {
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzFhNzNlOCcvPjx0ZXh0IHk9JzcwJyBmb250LXNpemU9JzUwJyBmaWxsPSd3aGl0ZSc+4pqh77iPPC90ZXh0Pjwvc3ZnPg==",
+          "sizes": "96x96"
         }
-        .categories {
-            background: white;
-            padding: 15px;
-            border-bottom: 1px solid #e2e8f0;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-        .category {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            margin-right: 8px;
-            background: #f1f5f9;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: #475569;
-            transition: all 0.2s;
-        }
-        .category.active { 
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-            color: white;
-        }
-        .news-list { padding: 15px; }
-        .news-card {
-            background: white;
-            margin-bottom: 20px;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            border: 1px solid #f1f5f9;
-            transition: all 0.3s ease;
-        }
-        .news-card:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-        .news-img {
-            width: 100%;
-            height: 140px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 32px;
-        }
-        .news-content { 
-            padding: 20px;
-        }
-        .news-title {
-            font-size: 17px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            line-height: 1.4;
-            color: #0f172a;
-        }
-        .news-summary {
-            color: #64748b;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 12px;
-        }
-        
-        /* Conținutul complet */
-        .news-full-content {
-            color: #475569;
-            font-size: 14px;
-            line-height: 1.7;
-            margin: 12px 0;
-            padding: 12px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border-left: 3px solid #3b82f6;
-            display: none;
-        }
-        .news-full-content.show {
-            display: block;
-            animation: slideDown 0.3s ease;
-        }
-        @keyframes slideDown {
-            from { opacity: 0; max-height: 0; }
-            to { opacity: 1; max-height: 500px; }
-        }
-        
-        /* Butoane moderne mici */
-        .news-actions {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 12px;
-        }
-        
-        .action-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 10px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-        
-        .read-btn {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-        }
-        .read-btn:hover {
-            background: #e2e8f0;
-            color: #334155;
-        }
-        
-        .modal-btn {
-            background: #dbeafe;
-            color: #1d4ed8;
-            border: 1px solid #bfdbfe;
-        }
-        .modal-btn:hover {
-            background: #bfdbfe;
-            color: #1e40af;
-        }
-        
-        .news-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            color: #94a3b8;
-            padding-top: 12px;
-            border-top: 1px solid #f1f5f9;
-        }
-        .news-stats { 
-            display: flex; 
-            gap: 12px;
-        }
-        .share-btn {
-            background: #ecfdf5;
-            color: #059669;
-            border: 1px solid #d1fae5;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .share-btn:hover {
-            background: #d1fae5;
-            color: #047857;
-        }
-        
-        /* Modal minimalista */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .modal-overlay.show {
-            display: flex;
-        }
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
-        }
-        .modal-header {
-            padding: 20px 20px 0 20px;
-            position: relative;
-        }
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #0f172a;
-            margin-bottom: 8px;
-            padding-right: 30px;
-        }
-        .modal-meta {
-            color: #64748b;
-            font-size: 12px;
-            margin-bottom: 16px;
-        }
-        .modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: #f1f5f9;
-            border: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #64748b;
-        }
-        .modal-close:hover {
-            background: #e2e8f0;
-        }
-        .modal-body {
-            padding: 0 20px 20px 20px;
-        }
-        .modal-text {
-            font-size: 14px;
-            line-height: 1.7;
-            color: #374151;
-            white-space: pre-line;
-        }
-        
-        .gradient-tech { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .gradient-economie { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-        .gradient-general { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .gradient-sport { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    </style>
-</head>
-<body>
-    <!-- Header -->
-    <header class="header">
-        <button class="btn">☰</button>
-        <div class="title">Știri</div>
-        <button class="btn">🔍</button>
-    </header>
-
-    <!-- Categories -->
-    <div class="categories">
-        <button class="category active" data-cat="general">📰 General</button>
-        <button class="category" data-cat="sport">⚽ Sport</button>
-        <button class="category" data-cat="tech">💻 Tech</button>
-        <button class="category" data-cat="economie">💰 Economie</button>
-    </div>
-
-    <!-- News List -->
-    <div class="news-list" id="newsList"></div>
-
-    <!-- Modal -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <button class="modal-close" onclick="closeModal()">×</button>
-                <h1 class="modal-title" id="modalTitle">Titlu știre</h1>
-                <div class="modal-meta">
-                    <span id="modalTime">2 ore</span> • 
-                    <span id="modalViews">1.2k views</span> • 
-                    <span id="modalCategory">Tehnologie</span>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div class="modal-text" id="modalText">Conținutul complet...</div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const newsData = {
-            general: [
-                {
-                    id: 1,
-                    title: "Tehnologia AI revolutionează industria în România",
-                    summary: "Companiile românești adoptă din ce în ce mai multe soluții de inteligență artificială pentru automatizarea proceselor.",
-                    content: `Inteligența artificială (AI) devine rapid un factor de schimbare în peisajul economic românesc, cu companii din diverse sectoare care implementează soluții inovatoare.
-
-Conform unui studiu recent, peste 65% dintre companiile mari din România au început să integreze tehnologii AI în procesele lor de business, reprezentând o creștere de 40% față de anul precedent.
-
-Sectoarele cele mai active în adoptarea AI sunt serviciile financiare și bancare, retail și e-commerce, manufacturare și automotive, sănătate și farmaceutice, transport și logistică.
-
-"Inteligența artificială nu mai este un concept futuristic, ci o realitate care transformă modul în care lucrăm astăzi", declară Dr. Maria Popescu, director al Institutului Național pentru Cercetare și Dezvoltare în Informatică.`,
-                    category: "Tehnologie",
-                    time: "2h",
-                    views: "1.2k",
-                    gradient: "gradient-tech"
-                },
-                {
-                    id: 2,
-                    title: "Economia României creşte cu 3.5% în primul trimestru",
-                    summary: "PIB-ul țării a înregistrat o creștere semnificativă comparativ cu aceeași perioadă a anului trecut.",
-                    content: `Institutul Național de Statistică (INS) a publicat astăzi datele oficiale privind evoluția economiei românești în primul trimestru, confirmând o creștere robustă de 3.5% a Produsului Intern Brut.
-
-Această performanță depășește cu mult așteptările analiștilor, care prognozau o creștere de doar 2.8%, și plasează România printre țările cu cea mai dinamică dezvoltare economică din Uniunea Europeană.
-
-Motoarele principale ale creșterii au fost consumul privat cu o contribuție de 2.1 puncte procentuale, investițiile brute care au crescut cu 8.3%, și exporturile care au înregistrat o performanță excelentă.`,
-                    category: "Economie",
-                    time: "4h",
-                    views: "2.3k",
-                    gradient: "gradient-economie"
-                }
-            ],
-            sport: [
-                {
-                    id: 3,
-                    title: "Naționala României se califică la Campionatul European",
-                    summary: "Echipa antrenată de Edi Iordănescu a obținut victoria necesară pentru calificarea la turneul final.",
-                    content: `România a reușit să se califice la Campionatul European din Germania, după un meci dramatic încheiat cu scorul de 2-1 în fața Ucrainei.
-
-Meciul decisiv de pe Arena Națională s-a încheiat în fața a peste 50.000 de spectatori care au creat o atmosferă de neuitat.
-
-Denis Drăguș a marcat golul victoriei în minutul 89, iar portarul Florin Niță a fost omul meciului cu 7 parade spectaculoase.`,
-                    category: "Fotbal",
-                    time: "1h",
-                    views: "5.2k",
-                    gradient: "gradient-sport"
-                }
-            ],
-            tech: [
-                {
-                    id: 4,
-                    title: "Startup românesc dezvoltă tehnologie pentru mașini autonome",
-                    summary: "Echipa de ingineri din Cluj-Napoca primește finanțare de 10 milioane euro.",
-                    content: `AutoTech Romania a anunțat încheierea unei runde de finanțare Seria A în valoare de 10 milioane de euro pentru dezvoltarea sistemelor de inteligență artificială pentru vehiculele autonome.
-
-Compania a dezvoltat un sistem proprietar numit "AdaptiveAI Drive" care combină algoritmi avansați de machine learning cu senzori LiDAR de ultimă generație.
-
-Tehnologia românească se diferențiază prin capacitatea de adaptare rapidă la condițiile de trafic haotice și comportamentul imprevizibil al conducătorilor auto.`,
-                    category: "Automotive",
-                    time: "30m",
-                    views: "4.5k",
-                    gradient: "gradient-tech"
-                }
-            ],
-            economie: [
-                {
-                    id: 5,
-                    title: "Bursa de la București atinge recorduri istorice",
-                    summary: "Indicii principali BET și BET-TR au înregistrat cele mai mari valori din ultimii 10 ani.",
-                    content: `Bursa de Valori București a încheiat ședința cu o performanță istorică, indicele principal BET ajungând la 13.847 de puncte.
-
-Această evoluție este susținută de intrările masive de capital străin și performanța excepțională a companiilor listate.
-
-Goldman Sachs a inclus România în lista "piețelor emergente favorite" pentru 2024, cu un obiectiv de preț pentru BET de 15.000 de puncte.`,
-                    category: "Finante",
-                    time: "2h",
-                    views: "1.9k",
-                    gradient: "gradient-economie"
-                }
-            ]
-        };
-
-        let currentCategory = 'general';
-        let currentNews = newsData;
-        let currentModalNews = null;
-
-        function toggleFullContent(newsId) {
-            const contentDiv = document.getElementById(`full-content-${newsId}`);
-            const button = document.getElementById(`read-more-${newsId}`);
-            
-            if (contentDiv.classList.contains('show')) {
-                contentDiv.classList.remove('show');
-                button.innerHTML = '📄 Mai mult';
-            } else {
-                contentDiv.classList.add('show');
-                button.innerHTML = '📄 Mai puțin';
-            }
-        }
-
-        function openModal(newsId) {
-            const allNews = Object.values(currentNews).flat();
-            const news = allNews.find(n => n.id === newsId);
-            if (!news) return;
-
-            currentModalNews = news;
-            document.getElementById('modalTitle').textContent = news.title;
-            document.getElementById('modalTime').textContent = news.time;
-            document.getElementById('modalViews').textContent = news.views + ' views';
-            document.getElementById('modalCategory').textContent = news.category;
-            document.getElementById('modalText').textContent = news.content;
-
-            document.getElementById('modalOverlay').classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('show');
-            document.body.style.overflow = 'auto';
-            currentModalNews = null;
-        }
-
-        function shareNews(newsId) {
-            const allNews = Object.values(currentNews).flat();
-            const news = allNews.find(n => n.id === newsId);
-            if (!news) return;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: news.title,
-                    text: news.summary,
-                    url: window.location.href
-                });
-            } else {
-                const text = news.title + '\n\n' + news.summary;
-                navigator.clipboard?.writeText(text).then(() => {
-                    alert('📋 Copiat în clipboard!');
-                });
-            }
-        }
-
-        function renderNews() {
-            const newsList = document.getElementById('newsList');
-            const news = currentNews[currentCategory] || [];
-            
-            if (news.length === 0) {
-                newsList.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Nu sunt știri disponibile</div>';
-                return;
-            }
-
-            let html = '';
-            news.forEach(item => {
-                html += `
-                    <article class="news-card">
-                        <div class="news-img ${item.gradient}">📰</div>
-                        <div class="news-content">
-                            <h2 class="news-title">${item.title}</h2>
-                            <p class="news-summary">${item.summary}</p>
-                            
-                            <div class="news-full-content" id="full-content-${item.id}">
-                                ${item.content}
-                            </div>
-                            
-                            <div class="news-actions">
-                                <button class="action-btn read-btn" id="read-more-${item.id}" onclick="toggleFullContent(${item.id})">
-                                    📄 Mai mult
-                                </button>
-                                <button class="action-btn modal-btn" onclick="openModal(${item.id})">
-                                    ⛶ Modal
-                                </button>
-                            </div>
-                            
-                            <div class="news-meta">
-                                <div class="news-stats">
-                                    <span>🕐 ${item.time}</span>
-                                    <span>👁 ${item.views}</span>
-                                    <span>📂 ${item.category}</span>
-                                </div>
-                                <button class="share-btn" onclick="shareNews(${item.id})">
-                                    📤 Share
-                                </button>
-                            </div>
-                        </div>
-                    </article>
-                `;
-            });
-            
-            newsList.innerHTML = html;
-        }
-
-        // Event listeners
-        document.querySelectorAll('.category').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.category').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                currentCategory = e.target.dataset.cat;
-                renderNews();
-            });
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
-        });
-
-        // Initialize
-        renderNews();
-
-        // Make functions global
-        window.toggleFullContent = toggleFullContent;
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        window.shareNews = shareNews;
-    </script>
-</body>
-</html>
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA0MDAgNjAwJz48cmVjdCB3aWR0aD0nNDAwJyBoZWlnaHQ9JzYwMCcgZmlsbD0nI2Y4ZjlmYScvPjxyZWN0IHdpZHRoPSc0MDAnIGhlaWdodD0nODAnIGZpbGw9JyMxYTczZTgnLz48dGV4dCB4PScyMCcgeT0nNTAnIGZvbnQtc2l6ZT0nMjAnIGZpbGw9J3doaXRlJz7ImlRpcmkgUm9tw6JuaWE8L3RleHQ+PC9zdmc+",
+      "sizes": "400x600",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "dir": "ltr",
+  "iarc_rating_id": ""
+}
