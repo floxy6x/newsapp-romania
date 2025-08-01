@@ -646,6 +646,7 @@
                 this.allArticles = []; // Store all articles
                 
                 // RSS Sources organized by category
+                // Only VERIFIED working RSS sources
                 this.rssSources = {
                     general: [
                         'https://www.digi24.ro/rss',
@@ -654,40 +655,40 @@
                         'https://www.g4media.ro/feed'
                     ],
                     business: [
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss',
                         'https://www.zf.ro/rss',
-                        'https://economie.hotnews.ro/rss',
-                        'https://www.digi24.ro/rss/economic',
-                        'https://www.libertatea.ro/rss/economic'
+                        'https://economie.hotnews.ro/rss'
                     ],
                     technology: [
-                        'https://www.digi24.ro/rss/stiinta-tehnologie',
-                        'https://www.hotnews.ro/rss/esential',
-                        'https://www.libertatea.ro/rss/tehnologie',
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss',
+                        'https://www.libertatea.ro/rss',
                         'https://www.zf.ro/rss'
                     ],
                     sports: [
-                        'https://www.digi24.ro/rss/sport',
-                        'https://sport.hotnews.ro/rss',
-                        'https://www.libertatea.ro/rss/sport',
-                        'https://www.prosport.ro/rss/'
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss',
+                        'https://www.libertatea.ro/rss',
+                        'https://sport.hotnews.ro/rss'
                     ],
                     health: [
-                        'https://www.digi24.ro/rss/sanatate',
-                        'https://www.hotnews.ro/rss/sanatate',
-                        'https://www.libertatea.ro/rss/sanatate',
-                        'https://www.digi24.ro/rss/stiri'
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss',
+                        'https://www.libertatea.ro/rss',
+                        'https://www.g4media.ro/feed'
                     ],
                     entertainment: [
-                        'https://www.libertatea.ro/rss/vedete',
-                        'https://www.digi24.ro/rss/showbiz',
-                        'https://www.hotnews.ro/rss/cultura',
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss',
+                        'https://www.libertatea.ro/rss',
                         'https://www.cancan.ro/rss/'
                     ],
                     science: [
-                        'https://www.digi24.ro/rss/stiinta-tehnologie',
-                        'https://www.hotnews.ro/rss/stiinta',
-                        'https://www.libertatea.ro/rss/sanatate',
-                        'https://www.digi24.ro/rss/externe'
+                        'https://www.digi24.ro/rss',
+                        'https://www.hotnews.ro/rss',
+                        'https://www.libertatea.ro/rss',
+                        'https://www.g4media.ro/feed'
                     ]
                 };
                 
@@ -996,6 +997,12 @@
                         const cleanTitle = this.cleanText(item.title);
                         const cleanSummary = this.extractSummary(item.description || item.content);
                         
+                        // Auto-categorize based on content if needed
+                        let detectedCategory = category;
+                        if (category === 'general') {
+                            detectedCategory = this.detectCategory(cleanTitle, cleanSummary);
+                        }
+                        
                         articles.push({
                             id: this.generateId(cleanTitle + item.link + category + index),
                             title: cleanTitle,
@@ -1003,8 +1010,8 @@
                             link: item.link,
                             pubDate: new Date(item.pubDate || Date.now()),
                             source: this.extractSource(item.link),
-                            category: category,
-                            image: this.getRandomEmoji(category),
+                            category: detectedCategory,
+                            image: this.getRandomEmoji(detectedCategory),
                             views: this.generateViews(),
                             bookmarked: false
                         });
@@ -1014,6 +1021,27 @@
                 });
                 
                 return articles;
+            }
+            
+            detectCategory(title, summary) {
+                const content = (title + ' ' + summary).toLowerCase();
+                
+                const categoryKeywords = {
+                    business: ['economic', 'business', 'financiar', 'investiții', 'companie', 'profit', 'piața', 'bani', 'euro', 'dolari'],
+                    technology: ['tech', 'tehnologie', 'digital', 'internet', 'computer', 'smartphone', 'aplicat', 'software'],
+                    sports: ['sport', 'fotbal', 'meci', 'echipa', 'antrenor', 'stadion', 'campionat', 'liga'],
+                    health: ['sanatate', 'medical', 'spital', 'doctor', 'tratament', 'boala', 'medicina'],
+                    entertainment: ['film', 'actor', 'artist', 'muzica', 'cinema', 'teatru', 'concert', 'vedeta'],
+                    science: ['cercetare', 'stiinta', 'studiu', 'universitate', 'descoperire', 'experiment']
+                };
+                
+                for (const [cat, keywords] of Object.entries(categoryKeywords)) {
+                    if (keywords.some(keyword => content.includes(keyword))) {
+                        return cat;
+                    }
+                }
+                
+                return 'general';
             }
             
             processArticles(articles) {
@@ -1042,11 +1070,29 @@
                 
                 let filteredArticles = [...this.allArticles];
                 
-                // Apply category filter
+                // Apply category filter with keyword-based filtering for better categorization
                 if (this.currentCategory !== 'general') {
-                    filteredArticles = filteredArticles.filter(article => 
-                        article.category === this.currentCategory
-                    );
+                    filteredArticles = filteredArticles.filter(article => {
+                        // Original category match
+                        if (article.category === this.currentCategory) return true;
+                        
+                        // Keyword-based categorization for better filtering
+                        const title = article.title.toLowerCase();
+                        const summary = article.summary.toLowerCase();
+                        const content = title + ' ' + summary;
+                        
+                        const categoryKeywords = {
+                            business: ['economic', 'business', 'financiar', 'investiții', 'companie', 'profit', 'piața', 'bani', 'euro', 'dolari', 'crestere economica', 'pib'],
+                            technology: ['tech', 'tehnologie', 'digital', 'internet', 'computer', 'smartphone', 'aplicat', 'software', 'startup', 'inovare', 'artificial'],
+                            sports: ['sport', 'fotbal', 'meci', 'echipa', 'antrenor', 'stadion', 'campionat', 'liga', 'joc', 'victorie', 'gol'],
+                            health: ['sanatate', 'medical', 'spital', 'doctor', 'tratament', 'boala', 'medicina', 'pacient', 'terapie', 'vaccin'],
+                            entertainment: ['film', 'actor', 'artist', 'muzica', 'cinema', 'teatru', 'concert', 'vedeta', 'spectacol', 'festival', 'emisiune'],
+                            science: ['cercetare', 'stiinta', 'studiu', 'universitate', 'descoperire', 'experiment', 'tehnologie', 'inovare', 'spatiu', 'clima']
+                        };
+                        
+                        const keywords = categoryKeywords[this.currentCategory] || [];
+                        return keywords.some(keyword => content.includes(keyword));
+                    });
                     console.log(`📂 Category filter (${this.currentCategory}): ${filteredArticles.length} articles`);
                 }
                 
