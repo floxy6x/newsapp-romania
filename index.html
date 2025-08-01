@@ -648,15 +648,39 @@
                     ],
                     business: [
                         'https://www.zf.ro/rss',
-                        'https://www.wall-street.ro/rss/all.xml'
+                        'https://www.wall-street.ro/rss/all.xml',
+                        'https://www.money.ro/rss/',
+                        'https://economie.hotnews.ro/rss'
                     ],
                     technology: [
                         'https://www.zf.ro/rss/sectiune/it-c-telecom-15',
-                        'https://start-up.ro/feed/'
+                        'https://start-up.ro/feed/',
+                        'https://www.hotnews.ro/rss/tehnologie',
+                        'https://www.digi24.ro/rss/tehnologie'
                     ],
                     sports: [
                         'https://www.prosport.ro/rss/',
-                        'https://www.gsp.ro/rss'
+                        'https://www.gsp.ro/rss',
+                        'https://sport.hotnews.ro/rss',
+                        'https://www.digi24.ro/rss/sport'
+                    ],
+                    health: [
+                        'https://www.digi24.ro/rss/sanatate',
+                        'https://www.hotnews.ro/rss/sanatate',
+                        'https://www.libertatea.ro/rss/sanatate',
+                        'https://adevarul.ro/rss/sanatate.xml'
+                    ],
+                    entertainment: [
+                        'https://www.libertatea.ro/rss/entertainment',
+                        'https://www.cancan.ro/rss/',
+                        'https://www.click.ro/rss',
+                        'https://www.digi24.ro/rss/entertainment'
+                    ],
+                    science: [
+                        'https://www.digi24.ro/rss/stiinta-tehnologie',
+                        'https://www.hotnews.ro/rss/stiinta',
+                        'https://www.descopera.ro/rss',
+                        'https://www.scientia.ro/rss'
                     ]
                 };
                 
@@ -786,8 +810,18 @@
                 button.classList.add('active');
                 
                 // Update category and load news
-                this.currentCategory = button.dataset.category;
-                this.loadNews();
+                const newCategory = button.dataset.category;
+                console.log(`🎯 Switching to category: ${newCategory} (was: ${this.currentCategory})`);
+                
+                this.currentCategory = newCategory;
+                this.searchQuery = ''; // Reset search when changing category
+                
+                // Clear search input
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) searchInput.value = '';
+                
+                // Load news for new category
+                this.loadNews(true); // Force refresh for category change
             }
             
             async loadNews(forceRefresh = false) {
@@ -1009,28 +1043,53 @@
             }
             
             processArticles(articles) {
-                // Remove duplicates and sort by date
+                // Remove duplicates based on title and URL
                 const uniqueArticles = articles.filter((article, index, self) =>
-                    index === self.findIndex(a => a.title === article.title)
+                    index === self.findIndex(a => 
+                        a.title.toLowerCase() === article.title.toLowerCase() || 
+                        a.link === article.link
+                    )
                 );
                 
+                console.log(`🔧 Processed: ${articles.length} → ${uniqueArticles.length} (removed ${articles.length - uniqueArticles.length} duplicates)`);
+                
+                // Update bookmarked status
+                uniqueArticles.forEach(article => {
+                    article.bookmarked = this.bookmarkedNews.includes(article.id);
+                });
+                
                 return uniqueArticles
-                    .sort((a, b) => b.pubDate - a.pubDate)
-                    .slice(0, 50); // Limit to 50 most recent
+                    .sort((a, b) => b.pubDate - a.pubDate) // Sort by date
+                    .slice(0, 100); // Limit to 100 most recent
             }
             
             filterAndRenderNews() {
                 if (!this.articles) return;
                 
-                let filteredArticles = this.articles;
+                let filteredArticles = [...this.articles]; // Copy to avoid mutation
+                
+                console.log(`🔍 Filtering ${filteredArticles.length} articles for category: ${this.currentCategory}`);
+                
+                // Apply category filter (except for 'general' which shows all)
+                if (this.currentCategory !== 'general') {
+                    filteredArticles = filteredArticles.filter(article => 
+                        article.category === this.currentCategory
+                    );
+                    console.log(`📂 After category filter: ${filteredArticles.length} articles`);
+                }
                 
                 // Apply search filter
                 if (this.searchQuery) {
-                    filteredArticles = this.articles.filter(article =>
+                    filteredArticles = filteredArticles.filter(article =>
                         article.title.toLowerCase().includes(this.searchQuery) ||
-                        article.summary.toLowerCase().includes(this.searchQuery)
+                        article.summary.toLowerCase().includes(this.searchQuery) ||
+                        article.source.toLowerCase().includes(this.searchQuery)
                     );
+                    console.log(`🔍 After search filter "${this.searchQuery}": ${filteredArticles.length} articles`);
                 }
+                
+                // Sort by publication date (newest first)
+                filteredArticles.sort((a, b) => b.pubDate - a.pubDate);
                 
                 this.renderNews(filteredArticles);
             }
@@ -1220,23 +1279,42 @@
             }
             
             startAutoRefresh() {
-                // Refresh every 5 minutes
+                // Clear any existing interval
+                if (this.autoRefreshInterval) {
+                    clearInterval(this.autoRefreshInterval);
+                }
+                
+                // Refresh every 10 minutes (more frequent for better UX)
                 this.autoRefreshInterval = setInterval(() => {
-                    this.loadNews();
-                }, 5 * 60 * 1000);
+                    console.log('🔄 Auto-refresh triggered');
+                    this.loadNews(true);
+                }, 10 * 60 * 1000); // 10 minutes
+                
+                console.log('⏰ Auto-refresh set for every 10 minutes');
             }
             
             updateLastRefreshTime() {
                 setInterval(() => {
                     if (this.lastUpdate) {
                         const elapsed = Math.floor((new Date() - this.lastUpdate) / 1000);
+                        const minutes = Math.floor(elapsed / 60);
+                        
                         if (elapsed < 60) {
-                            this.updateStatus(`✅ Actualizat acum ${elapsed}s`);
+                            this.updateStatus(`✅ Actualizat acum ${elapsed}s`, 'success');
+                        } else if (minutes < 60) {
+                            this.updateStatus(`✅ Actualizat acum ${minutes}m`, 'success');
                         } else {
-                            this.updateStatus(`✅ Actualizat acum ${Math.floor(elapsed/60)}m`);
+                            const hours = Math.floor(minutes / 60);
+                            this.updateStatus(`✅ Actualizat acum ${hours}h ${minutes % 60}m`, 'success');
+                        }
+                        
+                        // Auto-refresh if more than 15 minutes old
+                        if (minutes >= 15 && !this.isLoading) {
+                            console.log('⏰ Data is old, triggering refresh...');
+                            this.loadNews(true);
                         }
                     }
-                }, 10000);
+                }, 30000); // Update every 30 seconds
             }
             
             handleError() {
