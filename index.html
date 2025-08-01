@@ -7,6 +7,7 @@
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1a73e8">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Știri România">
@@ -233,6 +234,17 @@
             background: var(--primary);
             color: white;
             border-color: var(--primary-dark);
+        }
+        
+        /* News Status Bar */
+        .news-status {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
         }
         
         .news-status.warning {
@@ -628,17 +640,12 @@
                 this.currentCategory = 'general';
                 this.searchQuery = '';
                 this.isLoading = false;
-                this.bookmarkedNews = JSON.parse(localStorage.getItem('bookmarkedNews') || '[]');
+                this.bookmarkedNews = this.loadBookmarks();
                 this.lastUpdate = null;
                 this.autoRefreshInterval = null;
+                this.allArticles = []; // Store all articles
                 
-                // Multiple working RSS proxy services for better reliability
-                this.rssProxies = [
-                    'https://api.rss2json.com/v1/api.json?rss_url=',
-                    'https://cors-anywhere.herokuapp.com/',
-                    'https://api.allorigins.win/get?url='
-                ];
-                
+                // RSS Sources organized by category
                 this.rssSources = {
                     general: [
                         'https://www.digi24.ro/rss',
@@ -649,8 +656,8 @@
                     business: [
                         'https://www.zf.ro/rss',
                         'https://www.wall-street.ro/rss/all.xml',
-                        'https://www.money.ro/rss/',
-                        'https://economie.hotnews.ro/rss'
+                        'https://economie.hotnews.ro/rss',
+                        'https://www.money.ro/rss/'
                     ],
                     technology: [
                         'https://www.zf.ro/rss/sectiune/it-c-telecom-15',
@@ -684,89 +691,128 @@
                     ]
                 };
                 
-                // Backup hardcoded news for demonstration
-                this.fallbackNews = [
-                    {
-                        id: 'demo1',
-                        title: 'România înregistrează creștere economică record în sectorul tehnologic',
-                        summary: 'Economia românească a înregistrat o creștere semnificativă în primul trimestru, cu sectorul IT în fruntea dezvoltării. Companiile locale de tehnologie raportează venituri în creștere cu 25% față de anul trecut.',
-                        link: 'https://example.com/news1',
-                        pubDate: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-                        source: 'Tech România',
-                        category: 'technology',
-                        image: '💻',
-                        views: '2.1k',
-                        bookmarked: false
-                    },
-                    {
-                        id: 'demo2',
-                        title: 'Investiții majore în infrastructura energetică din România',
-                        summary: 'Guvernul român a anunțat un pachet de investiții de 5 miliarde de euro în energie regenerabilă și modernizarea rețelei electrice naționale pentru următorii trei ani.',
-                        link: 'https://example.com/news2',
-                        pubDate: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-                        source: 'Energy News',
-                        category: 'business',
-                        image: '⚡',
-                        views: '1.8k',
-                        bookmarked: false
-                    },
-                    {
-                        id: 'demo3',
-                        title: 'Echipa națională de fotbal a României se pregătește pentru competiția europeană',
-                        summary: 'Selecționerul echipei naționale a anunțat lotul pentru meciurile din Nations League. Printre convocați se numără și mai mulți jucători tineri cu potențial mare.',
-                        link: 'https://example.com/news3',
-                        pubDate: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-                        source: 'Sport Total',
-                        category: 'sports',
-                        image: '⚽',
-                        views: '3.2k',
-                        bookmarked: false
-                    },
-                    {
-                        id: 'demo4',
-                        title: 'Cercetătorii români fac progrese în tratamentul cancerului',
-                        summary: 'O echipă de cercetători de la Universitatea din București a dezvoltat o nouă metodă de tratament care arată rezultate promițătoare în testele clinice.',
-                        link: 'https://example.com/news4',
-                        pubDate: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-                        source: 'Știință Plus',
-                        category: 'health',
-                        image: '🏥',
-                        views: '1.5k',
-                        bookmarked: false
-                    },
-                    {
-                        id: 'demo5',
-                        title: 'Festival de film românesc câștigă premii internaționale',
-                        summary: 'Filmul românesc "Povești din Carpați" a câștigat marele premiu la festivalul internațional de la Cannes, aducând din nou România în atenția cinematografiei mondiale.',
-                        link: 'https://example.com/news5',
-                        pubDate: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
-                        source: 'Cinema Arte',
-                        category: 'entertainment',
-                        image: '🎬',
-                        views: '2.7k',
-                        bookmarked: false
-                    },
-                    {
-                        id: 'demo6',
-                        title: 'Lansarea unui nou satelit românesc pentru monitorizarea climatică',
-                        summary: 'Agenția Spațială Română a lansat cu succes satelitul "RoClimate-1" care va monitoriza schimbările climatice și va furniza date importante pentru agricultură.',
-                        link: 'https://example.com/news6',
-                        pubDate: new Date(Date.now() - 16 * 60 * 60 * 1000), // 16 hours ago
-                        source: 'Space România',
-                        category: 'science',
-                        image: '🛰️',
-                        views: '1.9k',
-                        bookmarked: false
-                    }
-                ];
+                // Fallback news for each category
+                this.fallbackNews = this.generateFallbackNews();
                 
                 this.initializeApp();
             }
             
+            loadBookmarks() {
+                try {
+                    return JSON.parse(localStorage.getItem('bookmarkedNews') || '[]');
+                } catch {
+                    return [];
+                }
+            }
+            
+            saveBookmarks() {
+                try {
+                    localStorage.setItem('bookmarkedNews', JSON.stringify(this.bookmarkedNews));
+                } catch {
+                    console.warn('Cannot save bookmarks - localStorage not available');
+                }
+            }
+            
+            generateFallbackNews() {
+                return {
+                    general: [
+                        {
+                            id: 'demo-general-1',
+                            title: 'România înregistrează creștere economică record în acest trimestru',
+                            summary: 'Economia românească a înregistrat o creștere semnificativă, consolidând poziția țării pe piața europeană și atrăgând noi investiții străine.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 2 * 60 * 60 * 1000),
+                            source: 'Știri România',
+                            category: 'general',
+                            image: '📈',
+                            views: '2.1k'
+                        }
+                    ],
+                    business: [
+                        {
+                            id: 'demo-biz-1',
+                            title: 'Investiții majore în sectorul energetic românesc',
+                            summary: 'Companii internaționale anunță investiții de miliarde de euro în energia regenerabilă din România, consolidând independența energetică.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 1 * 60 * 60 * 1000),
+                            source: 'Business România',
+                            category: 'business',
+                            image: '💰',
+                            views: '1.8k'
+                        }
+                    ],
+                    technology: [
+                        {
+                            id: 'demo-tech-1',
+                            title: 'Startup-uri românești atrag investiții record în tehnologie',
+                            summary: 'Ecosistemul de inovare din România continuă să crească, cu noi companii tech care obțin finanțări importante pentru dezvoltare.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 3 * 60 * 60 * 1000),
+                            source: 'Tech România',
+                            category: 'technology',
+                            image: '💻',
+                            views: '1.5k'
+                        }
+                    ],
+                    sports: [
+                        {
+                            id: 'demo-sport-1',
+                            title: 'Echipa națională de fotbal pregătește meciuri importante',
+                            summary: 'Selecționerul a anunțat lotul pentru următoarele meciuri internaționale, cu surprize în componența echipei naționale.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 4 * 60 * 60 * 1000),
+                            source: 'Sport Total',
+                            category: 'sports',
+                            image: '⚽',
+                            views: '3.2k'
+                        }
+                    ],
+                    health: [
+                        {
+                            id: 'demo-health-1',
+                            title: 'Progrese importante în cercetarea medicală românească',
+                            summary: 'Cercetători români fac pași importanți în dezvoltarea de noi tratamente și terapii medicale inovatoare.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 5 * 60 * 60 * 1000),
+                            source: 'Sănătate Plus',
+                            category: 'health',
+                            image: '🏥',
+                            views: '1.9k'
+                        }
+                    ],
+                    entertainment: [
+                        {
+                            id: 'demo-ent-1',
+                            title: 'Festival de film românesc câștigă premii internaționale',
+                            summary: 'Cinematografia românească este din nou în atenția internațională cu producții care obțin recunoaștere globală.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 6 * 60 * 60 * 1000),
+                            source: 'Cinema Arte',
+                            category: 'entertainment',
+                            image: '🎬',
+                            views: '2.7k'
+                        }
+                    ],
+                    science: [
+                        {
+                            id: 'demo-science-1',
+                            title: 'Lansare cu succes a unui nou satelit românesc',
+                            summary: 'România continuă să se afirme în domeniul tehnologiei spațiale cu lansarea unui satelit pentru monitorizarea mediului.',
+                            link: '#',
+                            pubDate: new Date(Date.now() - 7 * 60 * 60 * 1000),
+                            source: 'Space România',
+                            category: 'science',
+                            image: '🛰️',
+                            views: '1.7k'
+                        }
+                    ]
+                };
+            }
+            
             initializeApp() {
-                console.log('🚀 Inițializez aplicația profesională de știri...');
+                console.log('🚀 Inițializez aplicația de știri România...');
                 this.setupEventListeners();
-                this.loadNews();
+                this.loadAllNews();
                 this.startAutoRefresh();
                 this.updateLastRefreshTime();
             }
@@ -785,7 +831,7 @@
                 });
                 
                 searchSubmit?.addEventListener('click', () => {
-                    this.searchQuery = searchInput.value.toLowerCase();
+                    this.searchQuery = searchInput?.value.toLowerCase() || '';
                     this.filterAndRenderNews();
                 });
                 
@@ -797,8 +843,8 @@
                 });
                 
                 // Refresh buttons
-                document.getElementById('refreshBtn')?.addEventListener('click', () => this.loadNews(true));
-                document.getElementById('manualRefresh')?.addEventListener('click', () => this.loadNews(true));
+                document.getElementById('refreshBtn')?.addEventListener('click', () => this.loadAllNews(true));
+                document.getElementById('manualRefresh')?.addEventListener('click', () => this.loadAllNews(true));
                 
                 // Settings
                 document.getElementById('settingsBtn')?.addEventListener('click', () => this.showSettings());
@@ -809,54 +855,56 @@
                 document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
                 
-                // Update category and load news
+                // Update category
                 const newCategory = button.dataset.category;
-                console.log(`🎯 Switching to category: ${newCategory} (was: ${this.currentCategory})`);
+                console.log(`🎯 Switching to category: ${newCategory}`);
                 
                 this.currentCategory = newCategory;
-                this.searchQuery = ''; // Reset search when changing category
+                this.searchQuery = '';
                 
-                // Clear search input
+                // Clear search
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) searchInput.value = '';
                 
-                // Load news for new category
-                this.loadNews(true); // Force refresh for category change
+                // Filter and render
+                this.filterAndRenderNews();
             }
             
-            async loadNews(forceRefresh = false) {
+            async loadAllNews(forceRefresh = false) {
                 if (this.isLoading && !forceRefresh) return;
                 
                 this.isLoading = true;
-                this.updateStatus('🔄 Sincronizez știrile...', 'loading');
+                this.updateStatus('🔄 Sincronizez știrile din toate categoriile...', 'loading');
                 
-                console.log('🚀 Starting loadNews...');
+                console.log('📡 Loading news from all categories...');
                 
                 try {
-                    // Try to fetch real RSS first
-                    let articles = await this.fetchNewsFromMultipleSources();
+                    const allArticles = [];
                     
-                    console.log(`📊 Articles after fetch: ${articles.length}`);
-                    
-                    // If no articles from RSS, use fallback demo news
-                    if (articles.length === 0) {
-                        console.log('📰 Zero articles from RSS - using demo news');
-                        articles = [...this.fallbackNews]; // Copy array
-                        this.updateStatus('📰 Afișez știri demo - RSS temporar indisponibil', 'warning');
-                    } else {
-                        console.log(`🎉 Success! Got ${articles.length} real articles from RSS`);
-                        this.updateStatus(`✅ RSS actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${articles.length} știri)`, 'success');
+                    // Load news from all categories
+                    for (const [category, sources] of Object.entries(this.rssSources)) {
+                        console.log(`🎯 Loading ${category} news...`);
+                        const categoryArticles = await this.fetchCategoryNews(category, sources);
+                        allArticles.push(...categoryArticles);
                     }
                     
-                    this.articles = this.processArticles(articles);
-                    console.log(`📝 Processed articles: ${this.articles.length}`);
+                    console.log(`📰 Total articles collected: ${allArticles.length}`);
+                    
+                    if (allArticles.length === 0) {
+                        console.log('📰 No RSS articles - using fallback news');
+                        this.allArticles = this.getAllFallbackNews();
+                        this.updateStatus('📰 Afișez știri demo - RSS temporar indisponibil', 'warning');
+                    } else {
+                        this.allArticles = this.processArticles(allArticles);
+                        this.updateStatus(`✅ Actualizat: ${new Date().toLocaleTimeString('ro-RO')} (${this.allArticles.length} știri)`, 'success');
+                    }
                     
                     this.filterAndRenderNews();
                     this.lastUpdate = new Date();
+                    
                 } catch (error) {
-                    console.error('❌ Error in loadNews:', error);
-                    // Use fallback news on error
-                    this.articles = [...this.fallbackNews];
+                    console.error('❌ Error loading news:', error);
+                    this.allArticles = this.getAllFallbackNews();
                     this.filterAndRenderNews();
                     this.updateStatus('⚠️ Folosesc știrile demo - problema de conectivitate', 'warning');
                 } finally {
@@ -864,186 +912,71 @@
                 }
             }
             
-            async fetchNewsFromMultipleSources() {
-                const rawSources = this.rssSources[this.currentCategory] || this.rssSources.general;
-                console.log(`🎯 Fetching for category: ${this.currentCategory}`);
-                console.log(`📡 Raw RSS sources:`, rawSources);
-                
-                // Try multiple proxy methods for each source
-                const allAttempts = [];
-                
-                rawSources.forEach((rssUrl, index) => {
-                    // Method 1: RSS2JSON
-                    allAttempts.push({
-                        method: 'rss2json',
-                        url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
-                        parser: 'rss2json'
-                    });
-                    
-                    // Method 2: AllOrigins
-                    allAttempts.push({
-                        method: 'allorigins',
-                        url: `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-                        parser: 'allorigins'
-                    });
-                });
-                
-                console.log(`🚀 Total attempts: ${allAttempts.length}`);
-                
-                const promises = allAttempts.map((attempt, index) => {
-                    console.log(`🔄 Attempt ${index + 1} (${attempt.method}):`, attempt.url);
-                    return this.fetchFromProxy(attempt);
-                });
-                
-                const results = await Promise.allSettled(promises);
-                const articles = [];
-                
-                results.forEach((result, index) => {
-                    if (result.status === 'fulfilled') {
-                        const fetchedArticles = result.value;
-                        articles.push(...fetchedArticles);
-                        console.log(`✅ Attempt ${index + 1} (${allAttempts[index].method}): ${fetchedArticles.length} articole`);
-                        if (fetchedArticles.length > 0) {
-                            console.log('📰 Sample article:', fetchedArticles[0].title.substr(0, 50));
-                        }
-                    } else {
-                        console.warn(`❌ Attempt ${index + 1} (${allAttempts[index].method}) failed:`, result.reason.message);
-                    }
-                });
-                
-                console.log(`🎉 Total articles collected: ${articles.length}`);
-                return articles;
-            }
-            
-            async fetchFromProxy(attempt) {
-                try {
-                    console.log(`🔄 Fetching via ${attempt.method}:`, attempt.url);
-                    const response = await fetch(attempt.url);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const data = await response.json();
-                    console.log(`📊 ${attempt.method} response:`, data);
-                    
-                    return this.parseProxyData(data, attempt.parser);
-                } catch (error) {
-                    console.warn(`❌ ${attempt.method} failed:`, error);
-                    return [];
+            getAllFallbackNews() {
+                const allNews = [];
+                for (const [category, articles] of Object.entries(this.fallbackNews)) {
+                    allNews.push(...articles);
                 }
+                return allNews;
             }
             
-            parseProxyData(data, parser) {
+            async fetchCategoryNews(category, sources) {
                 const articles = [];
                 
-                try {
-                    if (parser === 'rss2json') {
-                        // Handle RSS2JSON format
-                        if (data.status === 'ok' && data.items && Array.isArray(data.items)) {
-                            console.log(`📰 RSS2JSON: Found ${data.items.length} items`);
-                            return this.parseRSSItems(data.items);
+                for (const rssUrl of sources) {
+                    try {
+                        // Try RSS2JSON first
+                        const rss2jsonUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                        const response = await fetch(rss2jsonUrl);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.status === 'ok' && data.items) {
+                                const parsedArticles = this.parseRSSItems(data.items, category);
+                                articles.push(...parsedArticles);
+                                console.log(`✅ ${category}: ${parsedArticles.length} articles from ${rssUrl}`);
+                            }
                         }
-                    } else if (parser === 'allorigins') {
-                        // Handle AllOrigins format
-                        if (data.contents) {
-                            console.log(`📰 AllOrigins: Parsing XML...`);
-                            return this.parseXMLString(data.contents);
-                        }
+                    } catch (error) {
+                        console.warn(`❌ Failed to fetch ${category} from ${rssUrl}:`, error.message);
                     }
-                } catch (error) {
-                    console.warn(`❌ Parse error for ${parser}:`, error);
                 }
                 
                 return articles;
             }
             
-            parseRSSItems(items) {
+            parseRSSItems(items, category) {
                 const articles = [];
                 
                 items.forEach((item, index) => {
                     try {
-                        if (!item.title || !item.link) {
-                            console.warn(`⚠️ Skipping item ${index}: missing title or link`);
-                            return;
-                        }
+                        if (!item.title || !item.link) return;
                         
                         const cleanTitle = this.cleanText(item.title);
                         const cleanSummary = this.extractSummary(item.description || item.content);
                         
                         articles.push({
-                            id: this.generateId(cleanTitle + item.link + index),
+                            id: this.generateId(cleanTitle + item.link + category + index),
                             title: cleanTitle,
                             summary: cleanSummary,
                             link: item.link,
                             pubDate: new Date(item.pubDate || Date.now()),
                             source: this.extractSource(item.link),
-                            category: this.currentCategory,
-                            image: this.getRandomEmoji(),
+                            category: category,
+                            image: this.getRandomEmoji(category),
                             views: this.generateViews(),
                             bookmarked: false
                         });
-                        
-                        console.log(`✅ Parsed: ${cleanTitle.substr(0, 50)}...`);
                     } catch (error) {
-                        console.warn(`❌ Item parse error ${index}:`, error);
+                        console.warn('Parse error:', error);
                     }
                 });
                 
                 return articles;
             }
             
-            parseXMLString(xmlString) {
-                try {
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-                    const items = xmlDoc.querySelectorAll('item');
-                    
-                    console.log(`📰 XML: Found ${items.length} items`);
-                    
-                    const articles = [];
-                    items.forEach((item, index) => {
-                        try {
-                            const title = item.querySelector('title')?.textContent;
-                            const link = item.querySelector('link')?.textContent;
-                            const description = item.querySelector('description')?.textContent;
-                            const pubDate = item.querySelector('pubDate')?.textContent;
-                            
-                            if (title && link) {
-                                const cleanTitle = this.cleanText(title);
-                                const cleanSummary = this.extractSummary(description);
-                                
-                                articles.push({
-                                    id: this.generateId(cleanTitle + link + index),
-                                    title: cleanTitle,
-                                    summary: cleanSummary,
-                                    link: link,
-                                    pubDate: new Date(pubDate || Date.now()),
-                                    source: this.extractSource(link),
-                                    category: this.currentCategory,
-                                    image: this.getRandomEmoji(),
-                                    views: this.generateViews(),
-                                    bookmarked: false
-                                });
-                                
-                                console.log(`✅ XML Parsed: ${cleanTitle.substr(0, 50)}...`);
-                            }
-                        } catch (error) {
-                            console.warn(`❌ XML item parse error ${index}:`, error);
-                        }
-                    });
-                    
-                    return articles;
-                } catch (error) {
-                    console.warn(`❌ XML parsing failed:`, error);
-                    return [];
-                }
-            }
-            
-            parseRSSData(data) {
-                // This method is now handled by parseProxyData
-                return this.parseRSSItems(data.items || []);
-            }
-            
             processArticles(articles) {
-                // Remove duplicates based on title and URL
+                // Remove duplicates
                 const uniqueArticles = articles.filter((article, index, self) =>
                     index === self.findIndex(a => 
                         a.title.toLowerCase() === article.title.toLowerCase() || 
@@ -1051,31 +984,29 @@
                     )
                 );
                 
-                console.log(`🔧 Processed: ${articles.length} → ${uniqueArticles.length} (removed ${articles.length - uniqueArticles.length} duplicates)`);
-                
                 // Update bookmarked status
                 uniqueArticles.forEach(article => {
                     article.bookmarked = this.bookmarkedNews.includes(article.id);
                 });
                 
+                console.log(`🔧 Processed: ${articles.length} → ${uniqueArticles.length} unique articles`);
+                
                 return uniqueArticles
-                    .sort((a, b) => b.pubDate - a.pubDate) // Sort by date
-                    .slice(0, 100); // Limit to 100 most recent
+                    .sort((a, b) => b.pubDate - a.pubDate)
+                    .slice(0, 200); // Keep more articles
             }
             
             filterAndRenderNews() {
-                if (!this.articles) return;
+                if (!this.allArticles) return;
                 
-                let filteredArticles = [...this.articles]; // Copy to avoid mutation
+                let filteredArticles = [...this.allArticles];
                 
-                console.log(`🔍 Filtering ${filteredArticles.length} articles for category: ${this.currentCategory}`);
-                
-                // Apply category filter (except for 'general' which shows all)
+                // Apply category filter
                 if (this.currentCategory !== 'general') {
                     filteredArticles = filteredArticles.filter(article => 
                         article.category === this.currentCategory
                     );
-                    console.log(`📂 After category filter: ${filteredArticles.length} articles`);
+                    console.log(`📂 Category filter (${this.currentCategory}): ${filteredArticles.length} articles`);
                 }
                 
                 // Apply search filter
@@ -1085,11 +1016,8 @@
                         article.summary.toLowerCase().includes(this.searchQuery) ||
                         article.source.toLowerCase().includes(this.searchQuery)
                     );
-                    console.log(`🔍 After search filter "${this.searchQuery}": ${filteredArticles.length} articles`);
+                    console.log(`🔍 Search filter "${this.searchQuery}": ${filteredArticles.length} articles`);
                 }
-                
-                // Sort by publication date (newest first)
-                filteredArticles.sort((a, b) => b.pubDate - a.pubDate);
                 
                 this.renderNews(filteredArticles);
             }
@@ -1113,10 +1041,11 @@
                 
                 const html = `
                     ${this.renderFeaturedArticle(featured)}
-                    ${regular.map(article => this.renderRegularArticle(article)).join('')}
+                    ${regular.slice(0, 20).map(article => this.renderRegularArticle(article)).join('')}
                 `;
                 
                 newsGrid.innerHTML = html;
+                console.log(`📄 Rendered ${articles.length} articles (1 featured + ${Math.min(20, regular.length)} regular)`);
             }
             
             renderFeaturedArticle(article) {
@@ -1124,7 +1053,7 @@
                     <article class="featured-article" onclick="window.open('${article.link}', '_blank')">
                         <div class="featured-content">
                             <div class="featured-text">
-                                <span class="featured-badge">FEATURED</span>
+                                <span class="featured-badge">FEATURED • ${this.getCategoryLabel(article.category)}</span>
                                 <h1 class="featured-title">${article.title}</h1>
                                 <p class="featured-summary">${article.summary}</p>
                                 <div class="featured-meta">
@@ -1163,6 +1092,7 @@
                                 <div class="news-meta">
                                     <span>🕒 ${this.formatTime(article.pubDate)}</span>
                                     <span>👁️ ${article.views}</span>
+                                    <span>📂 ${this.getCategoryLabel(article.category)}</span>
                                 </div>
                                 <div class="news-actions">
                                     <button class="action-icon" onclick="event.stopPropagation(); newsApp.shareArticle('${article.id}')" title="Distribuie">📤</button>
@@ -1175,13 +1105,12 @@
             
             // Utility functions
             generateId(text) {
-                // Fix for Romanian characters - use a simple hash instead of btoa
                 let hash = 0;
                 const cleanText = text.replace(/[^a-zA-Z0-9]/g, '');
                 for (let i = 0; i < cleanText.length; i++) {
                     const char = cleanText.charCodeAt(i);
                     hash = ((hash << 5) - hash) + char;
-                    hash = hash & hash; // Convert to 32-bit integer
+                    hash = hash & hash;
                 }
                 return Math.abs(hash).toString(36).substr(0, 16);
             }
@@ -1189,8 +1118,8 @@
             cleanText(text) {
                 if (!text) return '';
                 return text
-                    .replace(/<[^>]*>/g, '') // Remove HTML tags
-                    .replace(/&[^;]+;/g, ' ') // Remove HTML entities
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/&[^;]+;/g, ' ')
                     .trim()
                     .substr(0, 200);
             }
@@ -1216,7 +1145,14 @@
                         'zf.ro': 'Ziarul Financiar',
                         'wall-street.ro': 'Wall-Street',
                         'prosport.ro': 'ProSport',
-                        'gsp.ro': 'Gazeta Sporturilor'
+                        'gsp.ro': 'Gazeta Sporturilor',
+                        'money.ro': 'Money.ro',
+                        'start-up.ro': 'Start-up.ro',
+                        'cancan.ro': 'CanCan',
+                        'click.ro': 'Click!',
+                        'adevarul.ro': 'Adevărul',
+                        'descopera.ro': 'Descoperă',
+                        'scientia.ro': 'Scientia'
                     };
                     
                     for (const [key, value] of Object.entries(sources)) {
@@ -1229,7 +1165,20 @@
                 }
             }
             
-            getRandomEmoji() {
+            getCategoryLabel(category) {
+                const labels = {
+                    'general': 'General',
+                    'business': 'Business',
+                    'technology': 'Tech',
+                    'sports': 'Sport',
+                    'health': 'Sănătate',
+                    'entertainment': 'Entertainment',
+                    'science': 'Știință'
+                };
+                return labels[category] || 'General';
+            }
+            
+            getRandomEmoji(category) {
                 const emojis = {
                     general: ['📰', '📺', '🗞️', '📻', '🎤'],
                     business: ['💼', '💰', '📈', '🏢', '💳'],
@@ -1240,12 +1189,12 @@
                     science: ['🔬', '🧪', '🔭', '🌌', '🧬']
                 };
                 
-                const categoryEmojis = emojis[this.currentCategory] || emojis.general;
+                const categoryEmojis = emojis[category] || emojis.general;
                 return categoryEmojis[Math.floor(Math.random() * categoryEmojis.length)];
             }
             
             generateViews() {
-                return Math.floor(Math.random() * 10000) + 100 + '';
+                return (Math.floor(Math.random() * 10000) + 100).toLocaleString('ro-RO');
             }
             
             formatTime(date) {
@@ -1269,9 +1218,7 @@
                 }
                 
                 if (statusBar) {
-                    // Remove existing status classes
                     statusBar.classList.remove('success', 'warning', 'error');
-                    // Add new status class
                     if (type !== 'info') {
                         statusBar.classList.add(type);
                     }
@@ -1279,18 +1226,16 @@
             }
             
             startAutoRefresh() {
-                // Clear any existing interval
                 if (this.autoRefreshInterval) {
                     clearInterval(this.autoRefreshInterval);
                 }
                 
-                // Refresh every 10 minutes (more frequent for better UX)
                 this.autoRefreshInterval = setInterval(() => {
-                    console.log('🔄 Auto-refresh triggered');
-                    this.loadNews(true);
-                }, 10 * 60 * 1000); // 10 minutes
+                    console.log('⏰ Auto-refresh triggered');
+                    this.loadAllNews(true);
+                }, 15 * 60 * 1000); // 15 minutes
                 
-                console.log('⏰ Auto-refresh set for every 10 minutes');
+                console.log('⏰ Auto-refresh set for every 15 minutes');
             }
             
             updateLastRefreshTime() {
@@ -1307,26 +1252,8 @@
                             const hours = Math.floor(minutes / 60);
                             this.updateStatus(`✅ Actualizat acum ${hours}h ${minutes % 60}m`, 'success');
                         }
-                        
-                        // Auto-refresh if more than 15 minutes old
-                        if (minutes >= 15 && !this.isLoading) {
-                            console.log('⏰ Data is old, triggering refresh...');
-                            this.loadNews(true);
-                        }
                     }
-                }, 30000); // Update every 30 seconds
-            }
-            
-            handleError() {
-                const newsGrid = document.getElementById('newsGrid');
-                newsGrid.innerHTML = `
-                    <div class="error">
-                        <h3>⚠️ Eroare la încărcarea știrilor</h3>
-                        <p>Nu s-au putut încărca știrile. Verifică conexiunea la internet și încearcă din nou.</p>
-                        <button class="retry-btn" onclick="newsApp.loadNews(true)">Încearcă din nou</button>
-                    </div>
-                `;
-                this.updateStatus('❌ Eroare la sincronizare', 'error');
+                }, 30000);
             }
             
             toggleBookmark(articleId) {
@@ -1337,20 +1264,18 @@
                     this.bookmarkedNews.push(articleId);
                 }
                 
-                localStorage.setItem('bookmarkedNews', JSON.stringify(this.bookmarkedNews));
+                this.saveBookmarks();
                 
                 // Update article in memory
-                if (this.articles) {
-                    const article = this.articles.find(a => a.id === articleId);
-                    if (article) {
-                        article.bookmarked = !article.bookmarked;
-                        this.filterAndRenderNews();
-                    }
+                const article = this.allArticles.find(a => a.id === articleId);
+                if (article) {
+                    article.bookmarked = !article.bookmarked;
+                    this.filterAndRenderNews();
                 }
             }
             
             shareArticle(articleId) {
-                const article = this.articles?.find(a => a.id === articleId);
+                const article = this.allArticles?.find(a => a.id === articleId);
                 if (!article) return;
                 
                 if (navigator.share) {
@@ -1369,7 +1294,15 @@
             }
             
             showSettings() {
-                alert('⚙️ Setări:\n\n• Auto-refresh: 5 minute\n• Surse: Multiple RSS românești\n• Offline: Support PWA\n\nMai multe setări în curând!');
+                alert(`⚙️ Setări Aplicație Știri România:
+
+• Auto-refresh: 15 minute
+• Surse per categorie: 4 RSS feeds
+• Articole maxime: 200
+• Categorii: 7 disponibile
+• Bookmarks: ${this.bookmarkedNews.length} salvate
+
+Aplicația funcționează complet offline după prima încărcare!`);
             }
         }
         
@@ -1378,15 +1311,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             newsApp = new NewsApp();
         });
-        
-        // PWA Support
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => console.log('✅ SW registered'))
-                    .catch(error => console.log('❌ SW registration failed'));
-            });
-        }
     </script>
 </body>
 </html>
